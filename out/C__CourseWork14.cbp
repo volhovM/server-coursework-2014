@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+   <FileVersion major="1" minor="6" />
+   <Project>
+      <Option title="C__CourseWork14" />
+      <Option makefile_is_custom="1" />
+      <Option compiler="gcc" />
+      <Option virtualFolders="CMake Files\;" />
+      <Build>
+      <Target title="all">
+         <Option working_dir="/home/volhovm/Dropbox/Code/CourseWorkC++/out" />
+         <Option type="4" />
+         <MakeCommands>
+            <Build command="/home/volhovm/.nix-profile/bin/make -f &quot;/home/volhovm/Dropbox/Code/CourseWorkC++/out/Makefile&quot;  VERBOSE=1 all" />
+            <CompileFile command="/home/volhovm/.nix-profile/bin/make -f &quot;/home/volhovm/Dropbox/Code/CourseWorkC++/out/Makefile&quot;  VERBOSE=1 &quot;$file&quot;" />
+            <Clean command="/home/volhovm/.nix-profile/bin/make -f &quot;/home/volhovm/Dropbox/Code/CourseWorkC++/out/Makefile&quot;  VERBOSE=1 clean" />
+            <DistClean command="/home/volhovm/.nix-profile/bin/make -f &quot;/home/volhovm/Dropbox/Code/CourseWorkC++/out/Makefile&quot;  VERBOSE=1 clean" />
+         </MakeCommands>
+      </Target>
+      <Target title="C__CourseWork14">
+         <Option output="/home/volhovm/Dropbox/Code/CourseWorkC++/out/C__CourseWork14" prefix_auto="0" extension_auto="0" />
+         <Option working_dir="/home/volhovm/Dropbox/Code/CourseWorkC++/out" />
+         <Option object_output="./" />
+         <Option type="1" />
+         <Option compiler="gcc" />
+         <Compiler>
+            <Add directory="/nix/store/i11d0d4015p0vbdnjq7lb509v9pwp049-glibc-2.19/include" />
+            <Add directory="/nix/store/k8zhfmhbclwykmy6x0dyd9g3jjmgcs1q-clang-3.4.2/lib/clang/3.4.2/include" />
+            <Add directory="/nix/store/n2zcibvfxg6k2wpiipd8bzmc46q0vjy6-gcc-4.8.3/lib64/gcc/x86_64-unknown-linux-gnu/4.8.3/../../../../include/c++/4.8.3" />
+            <Add directory="/nix/store/n2zcibvfxg6k2wpiipd8bzmc46q0vjy6-gcc-4.8.3/lib64/gcc/x86_64-unknown-linux-gnu/4.8.3/../../../../include/c++/4.8.3/backward" />
+            <Add directory="/nix/store/n2zcibvfxg6k2wpiipd8bzmc46q0vjy6-gcc-4.8.3/lib64/gcc/x86_64-unknown-linux-gnu/4.8.3/../../../../include/c++/4.8.3/x86_64-unknown-linux-gnu" />
+         </Compiler>
+         <MakeCommands>
+            <Build command="/home/volhovm/.nix-profile/bin/make -f &quot;/home/volhovm/Dropbox/Code/CourseWorkC++/out/Makefile&quot;  VERBOSE=1 C__CourseWork14" />
+            <CompileFile command="/home/volhovm/.nix-profile/bin/make -f &quot;/home/volhovm/Dropbox/Code/CourseWorkC++/out/Makefile&quot;  VERBOSE=1 &quot;$file&quot;" />
+            <Clean command="/home/volhovm/.nix-profile/bin/make -f &quot;/home/volhovm/Dropbox/Code/CourseWorkC++/out/Makefile&quot;  VERBOSE=1 clean" />
+            <DistClean command="/home/volhovm/.nix-profile/bin/make -f &quot;/home/volhovm/Dropbox/Code/CourseWorkC++/out/Makefile&quot;  VERBOSE=1 clean" />
+         </MakeCommands>
+      </Target>
+      <Target title="C__CourseWork14/fast">
+         <Option output="/home/volhovm/Dropbox/Code/CourseWorkC++/out/C__CourseWork14" prefix_auto="0" extension_auto="0" />
+         <Option working_dir="/home/volhovm/Dropbox/Code/CourseWorkC++/out" />
+         <Option object_output="./" />
+         <Option type="1" />
+         <Option compiler="gcc" />
+         <Compiler>
+            <Add directory="/nix/store/i11d0d4015p0vbdnjq7lb509v9pwp049-glibc-2.19/include" />
+            <Add directory="/nix/store/k8zhfmhbclwykmy6x0dyd9g3jjmgcs1q-clang-3.4.2/lib/clang/3.4.2/include" />
+            <Add directory="/nix/store/n2zcibvfxg6k2wpiipd8bzmc46q0vjy6-gcc-4.8.3/lib64/gcc/x86_64-unknown-linux-gnu/4.8.3/../../../../include/c++/4.8.3" />
+            <Add directory="/nix/store/n2zcibvfxg6k2wpiipd8bzmc46q0vjy6-gcc-4.8.3/lib64/gcc/x86_64-unknown-linux-gnu/4.8.3/../../../../include/c++/4.8.3/backward" />
+            <Add directory="/nix/store/n2zcibvfxg6k2wpiipd8bzmc46q0vjy6-gcc-4.8.3/lib64/gcc/x86_64-unknown-linux-gnu/4.8.3/../../../../include/c++/4.8.3/x86_64-unknown-linux-gnu" />
+         </Compiler>
+         <MakeCommands>
+            <Build command="/home/volhovm/.nix-profile/bin/make -f &quot;/home/volhovm/Dropbox/Code/CourseWorkC++/out/Makefile&quot;  VERBOSE=1 C__CourseWork14/fast" />
+            <CompileFile command="/home/volhovm/.nix-profile/bin/make -f &quot;/home/volhovm/Dropbox/Code/CourseWorkC++/out/Makefile&quot;  VERBOSE=1 &quot;$file&quot;" />
+            <Clean command="/home/volhovm/.nix-profile/bin/make -f &quot;/home/volhovm/Dropbox/Code/CourseWorkC++/out/Makefile&quot;  VERBOSE=1 clean" />
+            <DistClean command="/home/volhovm/.nix-profile/bin/make -f &quot;/home/volhovm/Dropbox/Code/CourseWorkC++/out/Makefile&quot;  VERBOSE=1 clean" />
+         </MakeCommands>
+      </Target>
+      <Target title="edit_cache">
+         <Option working_dir="/home/volhovm/Dropbox/Code/CourseWorkC++/out" />
+         <Option type="4" />
+         <MakeCommands>
+            <Build command="/home/volhovm/.nix-profile/bin/make -f &quot;/home/volhovm/Dropbox/Code/CourseWorkC++/out/Makefile&quot;  VERBOSE=1 edit_cache" />
+            <CompileFile command="/home/volhovm/.nix-profile/bin/make -f &quot;/home/volhovm/Dropbox/Code/CourseWorkC++/out/Makefile&quot;  VERBOSE=1 &quot;$file&quot;" />
+            <Clean command="/home/volhovm/.nix-profile/bin/make -f &quot;/home/volhovm/Dropbox/Code/CourseWorkC++/out/Makefile&quot;  VERBOSE=1 clean" />
+            <DistClean command="/home/volhovm/.nix-profile/bin/make -f &quot;/home/volhovm/Dropbox/Code/CourseWorkC++/out/Makefile&quot;  VERBOSE=1 clean" />
+         </MakeCommands>
+      </Target>
+      <Target title="rebuild_cache">
+         <Option working_dir="/home/volhovm/Dropbox/Code/CourseWorkC++/out" />
+         <Option type="4" />
+         <MakeCommands>
+            <Build command="/home/volhovm/.nix-profile/bin/make -f &quot;/home/volhovm/Dropbox/Code/CourseWorkC++/out/Makefile&quot;  VERBOSE=1 rebuild_cache" />
+            <CompileFile command="/home/volhovm/.nix-profile/bin/make -f &quot;/home/volhovm/Dropbox/Code/CourseWorkC++/out/Makefile&quot;  VERBOSE=1 &quot;$file&quot;" />
+            <Clean command="/home/volhovm/.nix-profile/bin/make -f &quot;/home/volhovm/Dropbox/Code/CourseWorkC++/out/Makefile&quot;  VERBOSE=1 clean" />
+            <DistClean command="/home/volhovm/.nix-profile/bin/make -f &quot;/home/volhovm/Dropbox/Code/CourseWorkC++/out/Makefile&quot;  VERBOSE=1 clean" />
+         </MakeCommands>
+      </Target>
+      </Build>
+      <Unit filename="/home/volhovm/Dropbox/C++CourseWork14/socket_lib.cpp">
+      </Unit>
+      <Unit filename="/home/volhovm/Dropbox/C++CourseWork14/CMakeLists.txt">
+          <Option virtualFolder="CMake Files\" />
+      </Unit>
+   </Project>
+</CodeBlocks_project_file>

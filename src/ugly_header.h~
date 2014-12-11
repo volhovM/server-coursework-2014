@@ -1,0 +1,28 @@
+#include <string>
+
+struct tcp_socket {
+    tcp_socket(std::string, std::string);
+    tcp_socket(int fd);
+    tcp_socket(tcp_socket&& that);
+    ~tcp_socket();
+
+    int get_fd();
+    void listento();
+    void init(std::string hostname, std::string port);
+    void add_flag(int flag);
+
+private:
+    int sfd;
+    tcp_socket(const tcp_socket&);
+};
+
+struct epoll_wrapper {
+    std::function<void(char*)> handler;
+
+    void stop();
+    void start();
+    bool is_running();
+
+private:
+    bool running;
+};
