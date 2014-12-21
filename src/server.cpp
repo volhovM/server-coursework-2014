@@ -10,7 +10,6 @@
 #include "io.h"
 using namespace vm;
 
-
 int main(int argc, char *argv[]) {
     tcp_server* server;
     if (argc < 2) {
@@ -21,13 +20,13 @@ int main(int argc, char *argv[]) {
     else
 	server = new tcp_server(argv[1], argv[2]);
 
-    server->on_event_income([&] (std::vector<tcp_socket>& vec, tcp_socket& socket) {
-	    std::string msg = socket.get();
-	    for (int i = 0; i < vec.size(); i++)
+    server->on_event_income([&] (std::vector<vm::tcp_client>& clients, vm::tcp_client& client) {
+	    std::string msg = client.recieve_data();
+	    for (int i = 0; i < clients.size(); i++)
 	    {
-		if (vec[i].get_fd() != socket.get_fd())
+		if (clients[i] != client)
 		{
-		    vec[i].send("CLIENT #" + std::to_string(i + 1) + ": " + msg);
+		    clients[i].send_data("CLIENT #" + std::to_string(i + 1) + ": " + msg);
 		}
 	    }
 	});

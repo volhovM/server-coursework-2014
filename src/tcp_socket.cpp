@@ -33,10 +33,14 @@ tcp_socket::~tcp_socket() {
 
 tcp_socket::tcp_socket(tcp_socket&& that) {
     sfd = that.sfd;
-    that.sfd = -1;
+    that.invalidate();
 }
 
-int tcp_socket::get_fd() {
+void tcp_socket::invalidate() {
+    sfd = -1;
+}
+
+int tcp_socket::get_fd() const {
     return sfd;
 }
 
@@ -104,7 +108,7 @@ void tcp_socket::send(const std::string str) {
     write(sfd, str.c_str(), str.length());
 }
 
-std::string tcp_socket::get() {
+std::string tcp_socket::recieve() {
     ssize_t count;
     int len = 512;
     char buf[len];

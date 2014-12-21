@@ -9,6 +9,7 @@ add_executable(main
 	       src/server.cpp
 	       src/tcp_socket.cpp
 	       src/tcp_server.cpp
+	       src/tcp_client.cpp
 	       src/epoll_wrapper.cpp
 	       src/server.cpp
 )

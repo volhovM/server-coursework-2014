@@ -16,13 +16,13 @@
 using namespace vm;
 
 tcp_server::tcp_server()
-    : connection_handler([](std::vector<tcp_socket>&){}),
-      event_handler([](std::vector<tcp_socket>& sockets, tcp_socket&){})
+    : connection_handler([](std::vector<tcp_client>&){}),
+      event_handler([](std::vector<tcp_client>& sockets, tcp_client&){})
 { init(); }
 
 tcp_server::tcp_server(std::string host, std::string port)
-    : connection_handler([](std::vector<tcp_socket>&){})
-    , event_handler([](std::vector<tcp_socket>& sockets, tcp_socket&){})
+    : connection_handler([](std::vector<tcp_client>&){})
+    , event_handler([](std::vector<tcp_client>& sockets, tcp_client&){})
     , epoll(host, port)
 { init(); }
 
@@ -33,11 +33,12 @@ void tcp_server::init()
 				    sockets.emplace_back(fd);
 				    /* Make the incoming socket non-blocking and add it to the
 				       list of fds to monitor. */
-				    sockets.back().add_flag(O_NONBLOCK);
+				    sockets.back().get_socket().add_flag(O_NONBLOCK);
 				    // same as with first socket
-				    epoll.add_socket(sockets.back());
+				    epoll.add_socket(sockets.back().get_socket());
 				    connection_handler(sockets);
-				    std::cout << "ADDED" << std::endl;
+				    std::cout << "Added a client on socket with fd "
+					      << fd << std::endl;
 				});
     epoll.set_on_data_income([&](int fd)
 			     {
@@ -45,7 +46,7 @@ void tcp_server::init()
 				 // c++ cannot into linear search on vector, mda...
 				 for (int i = 0; i < sockets.size(); i++)
 				 {
-				     if (sockets[i].get_fd() == fd)
+				     if (sockets[i].get_socket().get_fd() == fd)
 				     {
 					 index = i;
 					 break;
@@ -58,6 +59,10 @@ void tcp_server::init()
 				 else std::cerr << "Got data from socket server is not tracking"
 						<< std::endl;
 			     });
+    epoll.set_on_connection_closed([&](int fd)
+				   {
+				       std::cout << "Connection closed on fd " << fd << std::endl;
+				   });
 }
 
 void tcp_server::on_event_income(event_h handler) {

@@ -12,13 +12,14 @@ namespace vm {
 	tcp_socket(tcp_socket&& that);
 	~tcp_socket();
 
-	int get_fd();
+	int get_fd() const;
+	void invalidate();
 	void set_listening();
 	void init(std::string hostname, std::string port);
 	void add_flag(int flag);
 
 	void send(const std::string);
-	std::string get();
+	std::string recieve();
 
     private:
 	bool is_server;
@@ -51,8 +52,29 @@ namespace vm {
 	std::function<void(int fd)> on_data_income;
     };
 
-    typedef std::function<void(std::vector<tcp_socket>&, tcp_socket&)> event_h;
-    typedef std::function<void(std::vector<tcp_socket>&)> simple_h;
+    class tcp_client {
+    public:
+	tcp_client();
+	tcp_client(int);
+	tcp_client(std::string host, std::string port);
+	tcp_client(tcp_client&&);
+
+	void connect_to(std::string host, std::string port);
+	std::string recieve_data();
+	void send_data(std::string);
+
+	bool operator==(const tcp_client& that);
+	bool operator!=(const tcp_client& that);
+
+	tcp_socket& get_socket();
+    private:
+	tcp_client(const tcp_client&);
+	tcp_client& operator=(const tcp_client&);
+	tcp_socket socket;
+    };
+
+    typedef std::function<void(std::vector<tcp_client>&, tcp_client&)> event_h;
+    typedef std::function<void(std::vector<tcp_client>&)> simple_h;
 
     class tcp_server {
     public:
@@ -68,11 +90,12 @@ namespace vm {
 	bool is_running();
 
     private:
+	void init();
+
 	event_h event_handler;
 	simple_h connection_handler;
-	std::vector<tcp_socket> sockets;
+	std::vector<tcp_client> sockets;
 	epoll_wrapper epoll;
-	void init();
 	bool running;
     };
 };

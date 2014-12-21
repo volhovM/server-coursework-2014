@@ -80,16 +80,17 @@ void vm::epoll_wrapper::process_data()
     int n = epoll_wait(efd, events, MAXEVENTS, -1);
     //std::cout << "epoll_wait succeeded " << errno << std::endl;
     for (int i = 0; i < n; i++) {
-	if ((events[i].events & EPOLLERR) ||
+	if (events[i].events & EPOLLRDHUP)
+	{
+	    std::cout << "connection closed" << std::endl;
+	    this->on_connection_closed(events[i].data.fd);
+	}
+	else if ((events[i].events & EPOLLERR) ||
 	    (events[i].events & EPOLLHUP) ||
 	    (!(events[i].events & EPOLLIN)))
 	{
-	    fprintf(stderr, "epoll error\n");
+	    std::cerr << "Epoll events error" << std::endl;
 	    continue;
-	}
-	else if (events[i].events & EPOLLRDHUP)
-	{
-	    this->on_connection_closed(events[i].data.fd);
 	}
 	else if (this->socket_input.get_fd() ==
 		 events[i].data.fd)
@@ -137,7 +138,7 @@ void vm::epoll_wrapper::add_socket(tcp_socket& socket)
     epoll_event event;
     event.data.fd = socket.get_fd();
     event.events = EPOLLIN | EPOLLET;
-    std::cout << "adding " << socket.get_fd() << std::endl;
+    //std::cout << "adding " << socket.get_fd() << std::endl;
     if (epoll_ctl(efd, EPOLL_CTL_ADD, socket.get_fd(), &event) == -1) {
 	perror("epoll_ctl");
 	abort();
