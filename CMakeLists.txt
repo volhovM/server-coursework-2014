@@ -8,8 +8,9 @@ add_executable(main
 	       src/io.h
 	       src/server.cpp
 	       src/tcp_socket.cpp
+	       src/tcp_server.cpp
 	       src/epoll_wrapper.cpp
 	       src/server.cpp
 )
 
-list( APPEND CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS} -g -fsanitize=bounds -ftest-coverage -fprofile-arcs -O2")
+list( APPEND CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS} -g -ftest-coverage -fprofile-arcs -O2")

@@ -12,7 +12,7 @@
 #include <errno.h>
 #include <stdexcept>
 #include "io.h"
-
+using namespace vm;
 
 tcp_socket::tcp_socket(std::string hostname, std::string port) : sfd(-1) {
     init(hostname, port);
@@ -46,7 +46,8 @@ void tcp_socket::set_listening() {
 }
 
 void tcp_socket::init(std::string hostname, std::string port) {
-    struct addrinfo hints; struct addrinfo *result, *rp;
+    addrinfo hints;
+    addrinfo *result, *rp;
 
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_family = AF_UNSPEC;
@@ -82,6 +83,8 @@ void tcp_socket::init(std::string hostname, std::string port) {
     }
     // no longer needed
     freeaddrinfo(result);
+
+    if (is_server) set_listening();
 }
 
 void tcp_socket::add_flag(int flag) {
@@ -95,29 +98,33 @@ void tcp_socket::add_flag(int flag) {
     }
 }
 
-void tcp_socket::send(const char* input, int l) {
-    std::cout << "writing char* '" << input << "' of size " << sizeof(input) << " and length "
-	      << strlen(input) << " into " << sfd << std::endl;
-    write(sfd, input, l);
+void tcp_socket::send(const std::string str) {
+    //    std::cout << "writing char* '" << input << "' of size " << sizeof(input) << " and length "
+    //      << strlen(input) << " into " << sfd << std::endl;
+    write(sfd, str.c_str(), str.length());
 }
 
 std::string tcp_socket::get() {
     ssize_t count;
-    int len = 0;
-    ioctl(sfd, FIONREAD, &len);
-    std::cout << "LEN IS:" << len << std::endl;
+    int len = 512;
     char buf[len];
-    count = read(sfd, buf, len);
-    if (count == -1) {
-	// if errno == EAGAIN, we have read all data
-	if (errno != EAGAIN) {
-	    perror("read");
-	    return std::string("");
+    std::string ret = "";
+    while (true) {
+	count = read(sfd, buf, len);
+	if (count == -1) {
+	    // if errno == EAGAIN, we have read all data
+	    if (errno != EAGAIN) {
+		std::cerr << "EAGAIN while reading socket fd #" << sfd << std::endl;
+	    } else
+	    {
+		return ret;
+	    }
+	} else if (count == 0)
+	{
+	    //eof
+	    return ret;
 	}
+	buf[count] = '\0';
+	ret += std::string(buf);
     }
-    else if (count == 0) {
-	//eof
-	return std::string(buf);
-    } else return std::string("");
-    return std::string(buf);
 }
