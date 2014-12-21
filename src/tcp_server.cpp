@@ -16,13 +16,15 @@
 using namespace vm;
 
 tcp_server::tcp_server()
-    : connection_handler([](std::vector<tcp_client>&){}),
-      event_handler([](std::vector<tcp_client>& sockets, tcp_client&){})
+    : on_data_income([](std::map<int, tcp_client>&, tcp_client&){})
+    , on_connect([](std::map<int, tcp_client>&, tcp_client&){})
+    , on_disconnect([](std::map<int, tcp_client>&, tcp_client&){})
 { init(); }
 
 tcp_server::tcp_server(std::string host, std::string port)
-    : connection_handler([](std::vector<tcp_client>&){})
-    , event_handler([](std::vector<tcp_client>& sockets, tcp_client&){})
+    : on_data_income([](std::map<int, tcp_client>&, tcp_client&){})
+    , on_connect([](std::map<int, tcp_client>&, tcp_client&){})
+    , on_disconnect([](std::map<int, tcp_client>&, tcp_client&){})
     , epoll(host, port)
 { init(); }
 
@@ -30,47 +32,43 @@ void tcp_server::init()
 {
     epoll.set_on_socket_connect([&](int fd)
 				{
-				    sockets.emplace_back(fd);
+				    clients.insert(std::make_pair(fd, tcp_client(fd)));
 				    /* Make the incoming socket non-blocking and add it to the
 				       list of fds to monitor. */
-				    sockets.back().get_socket().add_flag(O_NONBLOCK);
+				    clients[fd].id = id_counter++;
+				    clients[fd].get_socket().add_flag(O_NONBLOCK);
 				    // same as with first socket
-				    epoll.add_socket(sockets.back().get_socket());
-				    connection_handler(sockets);
+				    epoll.add_socket(clients[fd].get_socket());
 				    std::cout << "Added a client on socket with fd "
 					      << fd << std::endl;
+				    this->on_connect(clients, clients[fd]);
 				});
     epoll.set_on_data_income([&](int fd)
 			     {
-				 int index = -1;
 				 // c++ cannot into linear search on vector, mda...
-				 for (int i = 0; i < sockets.size(); i++)
-				 {
-				     if (sockets[i].get_socket().get_fd() == fd)
-				     {
-					 index = i;
-					 break;
-				     }
-				 }
-				 if (index != -1)
-				 {
-				     event_handler(sockets, sockets[index]);
-				 }
-				 else std::cerr << "Got data from socket server is not tracking"
-						<< std::endl;
+				 this->on_data_income(clients, clients[fd]);
+				 //else std::cerr << "Got data from socket server is not tracking"
+				 //		<< std::endl;
 			     });
     epoll.set_on_connection_closed([&](int fd)
 				   {
-				       std::cout << "Connection closed on fd " << fd << std::endl;
+				       disconnect_client(clients[fd]);
 				   });
 }
 
-void tcp_server::on_event_income(event_h handler) {
-    event_handler = handler;
+void tcp_server::set_on_data_income(event_h handler)
+{
+    on_data_income = handler;
 }
 
-void tcp_server::on_connected(simple_h handler) {
-    connection_handler = handler;
+void tcp_server::set_on_connect(event_h handler)
+{
+    on_connect = handler;
+}
+
+void tcp_server::set_on_disconnect(event_h handler)
+{
+    on_disconnect = handler;
 }
 
 void tcp_server::start() {
@@ -82,4 +80,11 @@ void tcp_server::start() {
 
 bool tcp_server::is_running() {
     return running;
+}
+
+void tcp_server::disconnect_client(tcp_client& client)
+{
+    this->on_disconnect(clients, client);
+    clients.erase(client.get_socket().get_fd());
+    std::cout << "Connection closed on fd " << client.get_socket().get_fd() << std::endl;
 }

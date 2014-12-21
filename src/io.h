@@ -2,7 +2,7 @@
 #include <string>
 #include <memory>
 #include <functional>
-#include <vector>
+#include <map>
 
 namespace vm {
     struct tcp_socket {
@@ -14,6 +14,7 @@ namespace vm {
 
 	int get_fd() const;
 	void invalidate();
+	void close_fd();
 	void set_listening();
 	void init(std::string hostname, std::string port);
 	void add_flag(int flag);
@@ -29,8 +30,7 @@ namespace vm {
 	tcp_socket& operator=(const tcp_socket&);
     };
 
-    class epoll_wrapper {
-    public:
+    struct epoll_wrapper {
 	epoll_wrapper();
 	epoll_wrapper(std::string host, std::string port);
 	~epoll_wrapper();
@@ -52,8 +52,7 @@ namespace vm {
 	std::function<void(int fd)> on_data_income;
     };
 
-    class tcp_client {
-    public:
+    struct tcp_client {
 	tcp_client();
 	tcp_client(int);
 	tcp_client(std::string host, std::string port);
@@ -62,40 +61,45 @@ namespace vm {
 	void connect_to(std::string host, std::string port);
 	std::string recieve_data();
 	void send_data(std::string);
+	void disconnect();
 
 	bool operator==(const tcp_client& that);
 	bool operator!=(const tcp_client& that);
 
 	tcp_socket& get_socket();
+
+	int id;
     private:
 	tcp_client(const tcp_client&);
 	tcp_client& operator=(const tcp_client&);
 	tcp_socket socket;
     };
 
-    typedef std::function<void(std::vector<tcp_client>&, tcp_client&)> event_h;
-    typedef std::function<void(std::vector<tcp_client>&)> simple_h;
+    typedef std::function<void(std::map<int, tcp_client>&, tcp_client&)> event_h;
 
-    class tcp_server {
-    public:
+    struct tcp_server {
 	tcp_server();
 	tcp_server(std::string host, std::string port);
 	~tcp_server();
 
-	void on_event_income(event_h);
-	void on_connected(simple_h);
+	void set_on_data_income(event_h);
+	void set_on_connect(event_h);
+	void set_on_disconnect(event_h);
 	void add_socket(tcp_socket&);
 	void stop();
 	void start();
 	bool is_running();
+	void disconnect_client(tcp_client&);
 
     private:
 	void init();
 
-	event_h event_handler;
-	simple_h connection_handler;
-	std::vector<tcp_client> sockets;
+	event_h on_data_income;
+	event_h on_connect;
+	event_h on_disconnect;
+	std::map<int, tcp_client> clients;
 	epoll_wrapper epoll;
 	bool running;
+	int id_counter;
     };
 };

@@ -28,7 +28,7 @@ tcp_socket::tcp_socket(int fd) {
 
 tcp_socket::~tcp_socket() {
     // TODO can return err
-    close(sfd);
+    close_fd();
 }
 
 tcp_socket::tcp_socket(tcp_socket&& that) {
@@ -38,6 +38,12 @@ tcp_socket::tcp_socket(tcp_socket&& that) {
 
 void tcp_socket::invalidate() {
     sfd = -1;
+}
+
+void tcp_socket::close_fd()
+{
+    //    std::cout << "closing fd: " << sfd << std::endl;
+    close(sfd);
 }
 
 int tcp_socket::get_fd() const {
@@ -92,13 +98,14 @@ void tcp_socket::init(std::string hostname, std::string port) {
 }
 
 void tcp_socket::add_flag(int flag) {
+    //    std::cout << "addinng flag " << flag << " to socket " << sfd << std::endl;
     int flags = fcntl(sfd, F_GETFL, 0);
     if (flags == -1) {
-	throw std::runtime_error("fcntl1");
+	throw std::runtime_error("fcntl1, errno " + std::to_string(errno));
     }
     flags |= flag;
     if (fcntl(sfd, F_SETFL, flags) == -1) {
-	throw std::runtime_error("fcntl2");
+	throw std::runtime_error("fcntl2" + std::to_string(errno));
     }
 }
 

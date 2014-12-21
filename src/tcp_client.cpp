@@ -35,6 +35,11 @@ void vm::tcp_client::send_data(std::string data)
 {
     socket.send(data);
 }
+
+void vm::tcp_client::disconnect()
+{
+    socket.close_fd();
+}
 vm::tcp_socket& vm::tcp_client::get_socket()
 {
     return socket;

@@ -78,25 +78,26 @@ void vm::epoll_wrapper::process_data()
 {
     epoll_event *events = (epoll_event *) calloc(MAXEVENTS, sizeof(epoll_event));
     int n = epoll_wait(efd, events, MAXEVENTS, -1);
-    //std::cout << "epoll_wait succeeded " << errno << std::endl;
+    //    std::cout << "epoll_wait succeeded, errno " << errno << " n " << n << std::endl;
     for (int i = 0; i < n; i++) {
-	if (events[i].events & EPOLLRDHUP)
+	if ((events[i].events & EPOLLRDHUP) || (events[i].events & EPOLLHUP))
 	{
-	    std::cout << "connection closed" << std::endl;
+	    //	    std::cout << "EPOLL: " << "connection closed" << std::endl;
 	    this->on_connection_closed(events[i].data.fd);
 	}
 	else if ((events[i].events & EPOLLERR) ||
-	    (events[i].events & EPOLLHUP) ||
 	    (!(events[i].events & EPOLLIN)))
 	{
-	    std::cerr << "Epoll events error" << std::endl;
+	    //	    std::cout << "EPOLL: " << "events error" << std::endl;
 	    continue;
 	}
 	else if (this->socket_input.get_fd() ==
 		 events[i].data.fd)
 	{
+	    //	    std::cout << "EPOLL: " << "connection" << std::endl;
 	    for (;;)
 	    {
+		//		std::cout << "EPOLL: " << "trying" << std::endl;
 		sockaddr in_addr;
 		socklen_t in_len;
 		char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
@@ -117,12 +118,14 @@ void vm::epoll_wrapper::process_data()
 			break;
 		    }
 		}
+		//		std::cout << "EPOLL: " << "calling on_socket_connect" << std::endl;
 		this->on_socket_connect(currfd);
 	    }
 	    continue;
 	}
 	else
 	{
+	    std::cout << "EPOLL: " << "reading" << std::endl;
 	    /* Let's read all the data available on event.fd
 	       We also have edge-triggered mode, so we must
 	       read all data as we won't get another notification
@@ -137,7 +140,7 @@ void vm::epoll_wrapper::add_socket(tcp_socket& socket)
 {
     epoll_event event;
     event.data.fd = socket.get_fd();
-    event.events = EPOLLIN | EPOLLET;
+    event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
     //std::cout << "adding " << socket.get_fd() << std::endl;
     if (epoll_ctl(efd, EPOLL_CTL_ADD, socket.get_fd(), &event) == -1) {
 	perror("epoll_ctl");
