@@ -84,7 +84,7 @@ bool tcp_server::is_running() {
 
 void tcp_server::disconnect_client(tcp_client& client)
 {
-    this->on_disconnect(clients, client);
+    on_disconnect(clients, client);
     clients.erase(client.get_socket().get_fd());
     std::cout << "Connection closed on fd " << client.get_socket().get_fd() << std::endl;
 }
