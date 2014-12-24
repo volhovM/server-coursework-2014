@@ -13,7 +13,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <new>
-#include "io.h"
+#include "tcp.h"
 
 vm::tcp_client::tcp_client(): socket("localhost", "127.0.0.1") {}
 vm::tcp_client::tcp_client(int fd): socket(fd) {}

@@ -12,7 +12,7 @@
 #include <netdb.h>
 #include <errno.h>
 #include <stdexcept>
-#include "io.h"
+#include "tcp.h"
 using namespace vm;
 
 tcp_server::tcp_server()
@@ -76,6 +76,10 @@ void tcp_server::start() {
     while (running) {
 	epoll.process_data();
     }
+}
+
+void tcp_server::stop() {
+    running = false;
 }
 
 bool tcp_server::is_running() {

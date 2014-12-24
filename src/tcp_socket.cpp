@@ -11,7 +11,7 @@
 #include <netdb.h>
 #include <errno.h>
 #include <stdexcept>
-#include "io.h"
+#include "tcp.h"
 using namespace vm;
 
 tcp_socket::tcp_socket(std::string hostname, std::string port) : sfd(-1) {

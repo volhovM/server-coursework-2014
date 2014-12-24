@@ -10,7 +10,8 @@
 #include <string>
 #include <cstdio>
 #include <map>
-#include "io.h"
+#include "tcp.h"
+#include "http.h"
 using namespace vm;
 
 void init1(tcp_server* server)
@@ -75,7 +76,7 @@ void init2(tcp_server* server)
 }
 
 
-int main(int argc, char *argv[]) {
+int main2(int argc, char *argv[]) {
     tcp_server* server;
     if (argc < 2) {
 	fprintf(stderr, "Usage: %s [port]\n", argv[0]);

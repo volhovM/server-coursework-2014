@@ -1,3 +1,6 @@
+#ifndef TCP_H
+#define TCP_H
+
 #include <sys/epoll.h>
 #include <string>
 #include <memory>
@@ -80,7 +83,6 @@ namespace vm {
     struct tcp_server {
 	tcp_server();
 	tcp_server(std::string host, std::string port);
-	~tcp_server();
 
 	void set_on_data_income(event_h);
 	void set_on_connect(event_h);
@@ -103,3 +105,5 @@ namespace vm {
 	int id_counter;
     };
 };
+
+#endif /* TCP_H */
