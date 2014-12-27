@@ -27,7 +27,7 @@ vm::tcp_server<T>::tcp_server(std::string host, std::string port)
 				    clients.insert(std::make_pair(fd,
 								  T(std::move(sock))));
 				    clients[fd].id = id_counter++;
-				    clients[fd].get_socket().add_flag(O_NONBLOCK);
+				    //clients[fd].get_socket().add_flag(O_NONBLOCK);
 				    // same as with first socket
 				    epoll.add_socket(clients[fd].get_socket());
 				    std::cout << "Added a client on socket with fd "

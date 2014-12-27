@@ -1,9 +1,9 @@
-GET http://neerc.ifmo.ru/~sta/2014-2015/2-algorithms/ HTTP/1.1
-Host: neerc.ifmo.ru
-Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
-Accept-Language: en-US,en;q=0.5
-Accept-Encoding: gzip, deflate
-DNT: 1
-Connection: close
-If-Modified-Since, Wed, 10 Dec 2014 13:31:51 GMT
-Cache-Control: max-age=0
+GET http://www.vk.com/ HTTP/1.1
+Host: www.vk.com
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:34.0) Gecko/20100101 Firefox/34.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+DNT: 1
+Cookie: remixlang=15; remixflash=11.2.202; remixscreen_depth=24; remixdt=0; remixseenads=1; audio_vol=67; remixsslsid=1; audio_time_left=0; remixrefkey=dee058a8ecb8cf099d; remixmdevice=1366/768/1/!!-!-!!
+Connection: keep-alive

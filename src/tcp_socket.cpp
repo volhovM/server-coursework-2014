@@ -20,7 +20,7 @@ using namespace vm;
 tcp_socket::tcp_socket(std::string hostname, std::string port)
     : sfd(-1)
 {
-    std::cout << "initing socket 1" << hostname << " " << port << std::endl;
+    std::cout << "creating socket " << hostname << " " << port << std::endl;
     init(hostname, port);
 }
 
@@ -28,7 +28,7 @@ tcp_socket::tcp_socket(std::string hostname, std::string port, bool srv)
     : sfd(-1)
     , is_server(srv)
 {
-    std::cout << "initing socket 2" << hostname << " " << port << std::endl;
+    std::cout << "creating socket " << hostname << " " << port << std::endl;
     init(hostname, port);
 }
 
@@ -144,16 +144,20 @@ void tcp_socket::add_flag(int flag) {
 void tcp_socket::send(const std::string str) {
     //    std::cout << "writing char* '" << input << "' of size " << sizeof(input) << " and length "
     //      << strlen(input) << " into " << sfd << std::endl;
+    std::cout << "writing to socket " << sfd << ":" << str << std::endl;
     write(sfd, str.c_str(), str.length());
 }
 
 std::string tcp_socket::recieve() {
+    std::cout << "reading from socket " << sfd << std::endl;
     ssize_t count;
     int len = 512;
     char buf[len];
     std::string ret = "";
     while (true) {
+	std::cout << "before read from " << sfd << std::endl;
 	count = read(sfd, buf, len);
+	std::cout << "after read from " << sfd << std::endl;
 	if (count == -1) {
 	    // if errno == EAGAIN, we have read all data
 	    if (errno != EAGAIN) {

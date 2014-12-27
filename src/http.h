@@ -132,14 +132,14 @@ namespace vm
 	http_connection(tcp_socket&&);
 	http_connection(http_connection&&);
 
-	std::vector<http_response> send_waiting(std::vector<http_request>);
-	void stop_waiting();
+	void query(std::vector<http_request> requests,
+		   std::function<void(std::vector<vm::http_response>)> response_handler,
+		   vm::epoll_wrapper&);
 
 	void send_request(http_request);
 	void send_response(http_response);
 
     private:
-	bool blocking;
 	http_connection(const http_connection&);
 	http_connection operator=(const http_connection&);
     };
@@ -153,6 +153,7 @@ namespace vm
 	void stop();
 	bool is_running();
 
+	vm::epoll_wrapper& get_epoll();
 	// client's request is formed, do something (maybe send a response)
 	void set_on_request(std::function<void(http_connection&, http_request)>);
 

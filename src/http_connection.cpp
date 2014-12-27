@@ -26,48 +26,49 @@ vm::http_connection::http_connection(http_connection&& that)
 {}
 
 
-std::vector<vm::http_response> vm::http_connection::send_waiting(std::vector<vm::http_request> req)
+void vm::http_connection::query(std::vector<vm::http_request> req,
+				std::function<void(std::vector<vm::http_response>)> response_handler,
+				epoll_wrapper& epoll)
 {
-    std::cout << "sending requests" << std::endl;
-    auto addr = get_socket().get_address();
-    epoll_wrapper epoll(addr.first, addr.second, false);
-    std::vector<vm::http_response> responses;
-    responses.push_back(http_response());
-    bool done;
-    epoll.set_on_data_income([&](int fd)
-				{
-				    std::string data = this->recieve_data();
-				    std::cout << "got data: " << data << std::endl;
-				    responses.back().append_data(data);
-				    if (responses.back().is_complete())
-				    {
-					std::cout << "responce ok " << responses.size()
-						  << " of " << req.size();
-					if (responses.size() == req.size())
-					    blocking = false;
-					else responses.push_back(http_response());
-				    } else
-				    {
-					std::cout << "request not over" << std::endl;
-				    }
-				});
-    epoll.set_on_connection_closed([&](int fd)
-				   {
-				       std::cout << "connection closed" << std::endl;
-				       done = true;
-				   });
-    for (http_request r: req) send_request(r);
-    blocking = true;
-    while (blocking)
-    {
-	epoll.process_data_as_client();
-    }
-    return responses;
-}
+    std::vector<vm::http_response>* responses = new std::vector<vm::http_response>();
+    responses->push_back(http_response());
+    epoll.add_socket(get_socket(),
+		     vm::epoll_wrapper::epoll_handler
+		     {
+			 // FIXME capturing & ?
+			 [&epoll, responses, req, response_handler, this](int fd)
+			 {
+			     std::cout << "In http_connection query start handler" << std::endl;
+			     std::string data = recieve_data();
+			     std::cout << "got data: " << data << std::endl;
+			     std::cout << (responses == NULL) << std::endl;
+			     responses->back().append_data(data);
+			     std::cout << "----MARK----" << std::endl;
 
-void vm::http_connection::stop_waiting()
-{
-    blocking = false;
+			     if (responses->back().is_complete())
+			     {
+				 std::cout << "responce ok " << responses->size()
+					   << " of " << req.size();
+				 if (responses->size() == req.size())
+				 {
+				     epoll.remove_socket(get_fd());
+				     response_handler(*responses);
+				     delete responses;
+				 }
+				 else
+				     responses->push_back(http_response());
+			     } else
+			     {
+				 std::cout << "request not over" << std::endl;
+			     }
+			 },
+			     [&](int fd)
+			     {
+				 std::cout << "Couldn't download from id " << id << std::endl;
+			     }
+		     });
+    std::cout << "sending requests" << std::endl;
+    for (http_request r: req) this->send_request(r);
 }
 
 void vm::http_connection::send_request(http_request request)

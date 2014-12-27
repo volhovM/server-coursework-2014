@@ -85,8 +85,8 @@ int main2(int argc, char *argv[]) {
     else
 	server = new tcp_server<tcp_connection>(argv[1], argv[2]);
 
-    //init1(server);
-    init2(server);
+    init1(server);
+    //init2(server);
 
     server->start();
 }

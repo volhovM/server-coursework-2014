@@ -15,6 +15,7 @@ set(SOURCE_FILES src/tcp.h
 		 src/http_connection.cpp
 		 src/http_server.cpp
 		 src/proxy.cpp
+		 src/http_example.cpp
 )
 
 add_executable(CourseWork ${SOURCE_FILES})

@@ -55,23 +55,23 @@ namespace vm
     struct epoll_wrapper
     {
 	epoll_wrapper();
-	epoll_wrapper(std::string host, std::string port, bool is_server);
 	~epoll_wrapper();
 
-	void set_on_socket_connect(std::function<void(tcp_socket&&)>);
-	void set_on_data_income(std::function<void(int fd)>);
-	void set_on_connection_closed(std::function<void(int fd)>);
+	static std::function<void(int)> on_socket_connect(std::function<void(tcp_socket&&)>);
+	struct epoll_handler
+	{
+	    std::function<void(int)> on_data_income;
+	    std::function<void(int)> on_disconnect;
+	};
 
-	void process_data_as_server();
-	void process_data_as_client();
-	void add_socket(tcp_socket&);
+	void process_events();
+	void add_socket(tcp_socket&, epoll_handler);
+	void remove_socket(int);
+
     private:
+	std::map<int, epoll_handler> handlers;
 	int efd;
-	tcp_socket socket_input;
 	int MAXEVENTS = 64;
-	std::function<void(tcp_socket&&)> on_socket_connect;
-	std::function<void(int fd)> on_connection_closed;
-	std::function<void(int fd)> on_data_income;
     };
 
     struct tcp_connection
@@ -102,45 +102,55 @@ namespace vm
     };
 
     template<typename T>
-     struct typehelper
-     {
-	 typedef std::function<void(std::map<int, T>&, T&)> event_h;
-     };
+	struct typehelper
+	{
+	    typedef std::function<void(std::map<int, T>&, T&)> event_h;
+	};
 
     template<typename T>
-    struct tcp_server
+	struct tcp_server
 	{
 	tcp_server(std::string host, std::string port)
-	    : on_data_income([](std::map<int, T>&, T&){})
-		, on_connect([](std::map<int, T>&, T&){})
+	: on_data_income([](std::map<int, T>&, T&){})
+	, on_connect([](std::map<int, T>&, T&){})
 		, on_disconnect([](std::map<int, T>&, T&){})
-		, epoll(host, port, true)
-		{
-		    epoll.set_on_socket_connect([&](tcp_socket&& sock)
-						{
-						    int fd = sock.get_fd();
-						    clients.insert(std::make_pair(fd,
-										  T(std::move(sock))));
-						    clients[fd].id = id_counter++;
-						    clients[fd].get_socket().add_flag(O_NONBLOCK);
-						    epoll.add_socket(clients[fd].get_socket());
-						    std::cout << "Added a client on socket with fd "
-							      << fd << std::endl;
-						    this->on_connect(clients, clients[fd]);
-						});
-		    epoll.set_on_data_income([&](int fd)
-					     {
-						 this->on_data_income(clients, clients[fd]);
-					     });
-		    epoll.set_on_connection_closed([&](int fd)
-						   {
-						       disconnect_client(clients[fd]);
-						   });
-		}
+		, server_socket(host, port, true)
+		, epoll()
+	    {
+		epoll.add_socket(server_socket,
+				 epoll_wrapper::epoll_handler {
+				     epoll_wrapper::on_socket_connect(
+								      [&](tcp_socket&& sock)
+								      {
+									  int fd = sock.get_fd();
+									  clients.insert(std::make_pair(fd, T(std::move(sock))));
+									  clients[fd].id = id_counter++;
+									  clients[fd].get_socket().add_flag(O_NONBLOCK);
+									  epoll.add_socket(clients[fd].get_socket(),
+											   epoll_wrapper::epoll_handler
+											   {
+											       ([&](int fd)
+												{
+												    this->on_data_income(clients, clients[fd]);
+												}),
+												   [&](int fd)
+												       {
+													   this->disconnect_client(clients[fd]);
+												       }
+
+											   });
+									  std::cout << "Added a client on socket with fd "
+										    << fd << std::endl;
+									  this->on_connect(clients, clients[fd]);
+									  std::cout << "After on_connect" << std::endl;
+								      }),
+					 [](int fd){}
+				 });
+	    }
 
 	tcp_server()
-	    : tcp_server("localhost", "7273")
-		{}
+	: tcp_server("localhost", "7273")
+	    {}
 
 	    void set_on_data_income(typename vm::typehelper<T>::event_h handler)
 	    {
@@ -160,7 +170,7 @@ namespace vm
 	    void start() {
 		running = true;
 		while (running) {
-		    epoll.process_data_as_server();
+		    epoll.process_events();
 		}
 	    }
 
@@ -180,13 +190,18 @@ namespace vm
 		std::cout << "Connection closed on fd " << fd << std::endl;
 	    }
 
-	protected:
-	    std::map<int, T> clients;
+	    epoll_wrapper& get_epoll()
+	    {
+		return epoll;
+	    }
+
 	private:
+	    std::map<int, T> clients;
+	    epoll_wrapper epoll;
 	    typename typehelper<T>::event_h on_data_income;
 	    typename typehelper<T>::event_h on_connect;
 	    typename typehelper<T>::event_h on_disconnect;
-	    epoll_wrapper epoll;
+	    tcp_socket server_socket;
 	    bool running;
 	    int id_counter;
 	};

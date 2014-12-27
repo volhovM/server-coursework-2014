@@ -20,6 +20,7 @@ vm::http_server::http_server(std::string host, std::string port)
 			  });
     server.set_on_data_income([&](std::map<int, vm::http_connection>& clients, http_connection& con)
 			      {
+				  std::cout << "in on_data_income" << std::endl;
 				  std::string msg = con.recieve_data();
 				  std::cout << msg << std::endl;
 				  int fd = con.get_fd();
@@ -63,4 +64,9 @@ bool vm::http_server::is_running()
 void vm::http_server::set_on_request(std::function<void(http_connection&, http_request)> foo)
 {
     on_request = foo;
+}
+
+vm::epoll_wrapper& vm::http_server::get_epoll()
+{
+    return server.get_epoll();
 }

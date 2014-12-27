@@ -78,7 +78,7 @@ void vm::http_request::set_url(std::string new_url)
 
 void vm::http_request::add_header(std::string name, std::string value)
 {
-    headers.insert(std::make_pair(name, value));
+    headers[name] = value;
 }
 
 std::string vm::http_request::commit()
