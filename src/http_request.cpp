@@ -84,13 +84,14 @@ void vm::http_request::add_header(std::string name, std::string value)
 std::string vm::http_request::commit()
 {
     std::string ret = "";
-    ret += request_method.description + " " + url + " HTTP/" + HTTP_VERSION + "\r\n";
+    ret += request_method.description + " " + url + " " + http_version + "\r\n";
     for (auto header: headers)
     {
 	ret += header.first + ": " + header.second + "\r\n";
     }
     ret += "\r\n";
     ret += body;
+    ret += "\r\n";
     return ret;
 }
 

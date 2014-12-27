@@ -1,7 +1,73 @@
 #include <vector>
 #include <string>
 #include <utility>
+#include <iostream>
 #include "http.h"
+
+void vm::http_response::append_data(std::string data)
+{
+    unparsed += data;
+    parse();
+}
+
+bool vm::http_response::is_complete()
+{
+    return title_parsed && headers_parsed && body_parsed;
+}
+
+void vm::http_response::parse()
+{
+    //	std::cout << "parsing: " << "$$$" << unparsed << "$$$ "
+    //	      << title_parsed << " " << headers_parsed << std::endl;
+    while (true)
+    {
+	if (!title_parsed)
+	{
+	    http_version = unparsed.substr(0, unparsed.find(" "));
+	    unparsed = unparsed.substr(unparsed.find(" ") + 1);
+
+	    int code = std::stoi(unparsed.substr(0, unparsed.find(" ")));
+	    unparsed = unparsed.substr(unparsed.find(" ") + 1);
+	    std::string reason = unparsed.substr(0, unparsed.find("\r\n"));
+	    unparsed = unparsed.substr(unparsed.find("\r\n") + 2);
+	    //	    std::cout << "PARSER URL: " <<  url << std::endl;
+	    status_code = http_status_code { code, reason };
+
+	    title_parsed = true;
+	} else if (!headers_parsed)
+	{
+	    int next = unparsed.find("\r\n");
+	    //	    std::cout << "PARSER: GOT " << next << std::endl;
+	    if (next == 0)
+	    {
+		headers_parsed = true;
+		unparsed = unparsed.substr(2);
+	    } else if (next == -1) {
+		// partial data
+		break;
+	    } else
+	    {
+		std::string curr = unparsed.substr(0, next);
+		unparsed = unparsed.substr(next + 2);
+		std::string name = curr.substr(0, curr.find(":"));
+		curr = curr.substr(curr.find(":") + 2); // +space
+		add_header(name, curr);
+	    }
+	} else if (!body_parsed)
+	{
+	    //std::cout << "PARSING BODY " << unparsed << std::endl;
+	    if (headers.find("Content-Length") != headers.end())
+	    {
+		int cnt = std::stoi(headers["Content-Length"]);
+		body += unparsed;
+		unparsed = "";
+		if (cnt == body.length()) body_parsed = true;
+	    } else body_parsed = true;
+	    break;
+	}
+    }
+    std::cout << "LEFT TO PARSE: " << "$$$" << unparsed << "$$$" << std::endl;
+}
 
 void vm::http_response::set_status_code(http_status_code new_code)
 {

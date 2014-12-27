@@ -1,0 +1,9 @@
+GET http://neerc.ifmo.ru/~sta/2014-2015/2-algorithms/ HTTP/1.1
+Host: neerc.ifmo.ru
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+DNT: 1
+Connection: close
+If-Modified-Since, Wed, 10 Dec 2014 13:31:51 GMT
+Cache-Control: max-age=0

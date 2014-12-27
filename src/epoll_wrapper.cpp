@@ -15,28 +15,19 @@
 #include <vector>
 #include <stdexcept>
 #include <iostream>
+#include <utility>
 #include <cstdio>
 #include "tcp.h"
 
-vm::epoll_wrapper::epoll_wrapper():
-    on_socket_connect([](int fd){}),
+vm::epoll_wrapper::epoll_wrapper()
+    : epoll_wrapper("localhost", "7273", false)
+{}
+
+vm::epoll_wrapper::epoll_wrapper(std::string host, std::string port, bool listening):
+    on_socket_connect([](tcp_socket&&){}),
     on_data_income([](int fd){}),
     on_connection_closed([](int fd){}),
-    socket_input("localhost", "7273", true)
-{
-    init();
-}
-
-vm::epoll_wrapper::epoll_wrapper(std::string host, std::string port):
-    on_socket_connect([](int fd){}),
-    on_data_income([](int fd){}),
-    on_connection_closed([](int fd){}),
-    socket_input(host, port, true)
-{
-    init();
-}
-
-void vm::epoll_wrapper::init()
+    socket_input(host, port, listening)
 {
     efd = epoll_create1(0);
     if (efd == 0) {
@@ -44,7 +35,6 @@ void vm::epoll_wrapper::init()
 	abort();
     }
     socket_input.add_flag(O_NONBLOCK);
-    socket_input.set_listening();
     epoll_event event;
     event.data.fd = socket_input.get_fd();
     event.events = EPOLLIN | EPOLLET;
@@ -59,7 +49,7 @@ vm::epoll_wrapper::~epoll_wrapper()
     close(efd);
 }
 
-void vm::epoll_wrapper::set_on_socket_connect(std::function<void(int)> foo)
+void vm::epoll_wrapper::set_on_socket_connect(std::function<void(tcp_socket&&)> foo)
 {
     on_socket_connect = foo;
 }
@@ -74,7 +64,7 @@ void vm::epoll_wrapper::set_on_connection_closed(std::function<void(int)> foo)
     on_connection_closed = foo;
 }
 
-void vm::epoll_wrapper::process_data()
+void vm::epoll_wrapper::process_data_as_server()
 {
     epoll_event *events = (epoll_event *) calloc(MAXEVENTS, sizeof(epoll_event));
     int n = epoll_wait(efd, events, MAXEVENTS, -1);
@@ -103,8 +93,8 @@ void vm::epoll_wrapper::process_data()
 		char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
 		in_len = sizeof in_addr;
 		//	std::cout <<"waiting for accept" << std::endl;
-		int currfd = accept(socket_input.get_fd(), &in_addr, &in_len);
-		if (currfd == -1)
+		tcp_socket temp(socket_input.get_fd(), in_addr, in_len);
+		if (!temp.is_valid())
 		{
 		    if ((errno == EAGAIN) ||
 			(errno == EWOULDBLOCK))
@@ -117,9 +107,8 @@ void vm::epoll_wrapper::process_data()
 			perror("accept");
 			break;
 		    }
-		}
+		} else this->on_socket_connect(std::move(temp));
 		//		std::cout << "EPOLL: " << "calling on_socket_connect" << std::endl;
-		this->on_socket_connect(currfd);
 	    }
 	    continue;
 	}
@@ -130,6 +119,35 @@ void vm::epoll_wrapper::process_data()
 	       We also have edge-triggered mode, so we must
 	       read all data as we won't get another notification
 	    */
+	    this->on_data_income(events[i].data.fd);
+	}
+    }
+    free(events);
+}
+
+void vm::epoll_wrapper::process_data_as_client()
+{
+    epoll_event *events = (epoll_event *) calloc(MAXEVENTS, sizeof(epoll_event));
+    std::cout << "waiting for epoll"  << std::endl;
+    int n = epoll_wait(efd, events, MAXEVENTS, -1);
+    std::cout << "epoll_wait succeeded, errno " << errno << " n " << n << std::endl;
+    for (int i = 0; i < n; i++) {
+	if ((events[i].events & EPOLLRDHUP) || (events[i].events & EPOLLHUP))
+	{
+	    std::cout << "EPOLL: " << "connection closed" << std::endl;
+	    this->on_connection_closed(events[i].data.fd);
+	}
+	else if ((events[i].events & EPOLLERR) ||
+	    (!(events[i].events & EPOLLIN)))
+	{
+	    std::cout << "EPOLL: " << "events error" << std::endl;
+	    continue;
+	}
+	else if (this->socket_input.get_fd() ==
+		 events[i].data.fd)
+	{
+	    //	    std::cout << "EPOLL: " << "connection" << std::endl;
+	    std::cout << "EPOLL: " << "reading" << std::endl;
 	    this->on_data_income(events[i].data.fd);
 	}
     }

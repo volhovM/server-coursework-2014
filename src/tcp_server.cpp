@@ -11,30 +11,21 @@
 #include <cstring>
 #include <netdb.h>
 #include <errno.h>
-#include <stdexcept>
+#include <type_traits>
 #include "tcp.h"
-using namespace vm;
 
-tcp_server::tcp_server()
-    : on_data_income([](std::map<int, tcp_client>&, tcp_client&){})
-    , on_connect([](std::map<int, tcp_client>&, tcp_client&){})
-    , on_disconnect([](std::map<int, tcp_client>&, tcp_client&){})
-{ init(); }
 
-tcp_server::tcp_server(std::string host, std::string port)
-    : on_data_income([](std::map<int, tcp_client>&, tcp_client&){})
-    , on_connect([](std::map<int, tcp_client>&, tcp_client&){})
-    , on_disconnect([](std::map<int, tcp_client>&, tcp_client&){})
-    , epoll(host, port)
-{ init(); }
-
-void tcp_server::init()
+vm::tcp_server<T>::tcp_server(std::string host, std::string port)
+    : on_data_income([](std::map<int, T>&, T&){})
+    , on_connect([](std::map<int, T>&, T&){})
+    , on_disconnect([](std::map<int, T>&, T&){})
+    , epoll(host, port, true)
 {
-    epoll.set_on_socket_connect([&](int fd)
+    epoll.set_on_socket_connect([&](vm::tcp_socket&& sock)
 				{
-				    clients.insert(std::make_pair(fd, tcp_client(fd)));
-				    /* Make the incoming socket non-blocking and add it to the
-				       list of fds to monitor. */
+				    int fd = sock.get_fd();
+				    clients.insert(std::make_pair(fd,
+								  T(std::move(sock))));
 				    clients[fd].id = id_counter++;
 				    clients[fd].get_socket().add_flag(O_NONBLOCK);
 				    // same as with first socket
@@ -45,7 +36,6 @@ void tcp_server::init()
 				});
     epoll.set_on_data_income([&](int fd)
 			     {
-				 // c++ cannot into linear search on vector, mda...
 				 this->on_data_income(clients, clients[fd]);
 				 //else std::cerr << "Got data from socket server is not tracking"
 				 //		<< std::endl;
@@ -54,39 +44,52 @@ void tcp_server::init()
 				   {
 				       disconnect_client(clients[fd]);
 				   });
+
 }
 
-void tcp_server::set_on_data_income(event_h handler)
+
+vm::tcp_server<T>::tcp_server()
+    : tcp_server("localhost", "7273")
+{}
+
+
+void vm::tcp_server<T>::set_on_data_income(typename vm::typehelper<T>::event_h handler)
 {
     on_data_income = handler;
 }
 
-void tcp_server::set_on_connect(event_h handler)
+
+void vm::tcp_server<T>::set_on_connect(typename vm::typehelper<T>::event_h handler)
 {
     on_connect = handler;
 }
 
-void tcp_server::set_on_disconnect(event_h handler)
+
+void vm::tcp_server<T>::set_on_disconnect(typename vm::typehelper<T>::event_h handler)
 {
     on_disconnect = handler;
 }
 
-void tcp_server::start() {
+
+void vm::tcp_server<T>::start() {
     running = true;
     while (running) {
-	epoll.process_data();
+	epoll.process_data_as_server();
     }
 }
 
-void tcp_server::stop() {
+
+void vm::tcp_server<T>::stop() {
     running = false;
 }
 
-bool tcp_server::is_running() {
+
+bool vm::tcp_server<T>::is_running() {
     return running;
 }
 
-void tcp_server::disconnect_client(tcp_client& client)
+
+void vm::tcp_server<T>::disconnect_client(T& client)
 {
     on_disconnect(clients, client);
     clients.erase(client.get_socket().get_fd());

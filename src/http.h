@@ -1,6 +1,8 @@
 #include <map>
 #include <string>
 #include <utility>
+#include <vector>
+#include <memory>
 #include "tcp.h"
 
 namespace vm
@@ -69,9 +71,15 @@ namespace vm
 
     private:
 	http_status_code status_code;
-	std::string unparsed;
+	std::string http_version = "HTTP/" + HTTP_VERSION;
 	std::map<std::string, std::string> headers;
 	std::string body;
+
+	void parse();
+	std::string unparsed;
+	bool title_parsed = false;
+	bool headers_parsed = false;
+	bool body_parsed = false;
     };
 
     struct http_request
@@ -104,8 +112,8 @@ namespace vm
 
     private:
 	http_request_method request_method;
-	std::string http_version;
-	std::string url;
+	std::string http_version = "HTTP/" + HTTP_VERSION;
+	std::string url = "/";
 	std::string body;
 	std::map<std::string, std::string> headers;
 
@@ -114,6 +122,26 @@ namespace vm
 	bool title_parsed = false;
 	bool headers_parsed = false;
 	bool body_parsed = false;
+    };
+
+    struct http_connection : tcp_connection
+    {
+	http_connection();
+	http_connection(tcp_connection&&);
+	http_connection(std::string host);
+	http_connection(tcp_socket&&);
+	http_connection(http_connection&&);
+
+	std::vector<http_response> send_waiting(std::vector<http_request>);
+	void stop_waiting();
+
+	void send_request(http_request);
+	void send_response(http_response);
+
+    private:
+	bool blocking;
+	http_connection(const http_connection&);
+	http_connection operator=(const http_connection&);
     };
 
     struct http_server
@@ -125,14 +153,12 @@ namespace vm
 	void stop();
 	bool is_running();
 
-	void set_on_request(std::function<http_response(http_request)>);
+	// client's request is formed, do something (maybe send a response)
+	void set_on_request(std::function<void(http_connection&, http_request)>);
 
     private:
-	tcp_server server;
-	std::function<http_response(http_request)> on_request;
-    };
-
-    struct http_client
-    {
+	tcp_server<http_connection> server;
+	std::function<void(http_connection&, http_request)> on_request;
+	std::map<int, http_request> request_map;
     };
 }
