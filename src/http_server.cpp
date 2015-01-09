@@ -14,11 +14,12 @@ vm::http_server::http_server(std::string host, std::string port)
 		 })
     , server(host, port)
 {
-    server.set_on_connect([&](std::map<int, vm::http_connection>& map, http_connection& con)
+    server.set_on_connect([this](std::map<int, vm::http_connection>& map,
+			      http_connection& con)
 			  {
-			      request_map.insert(std::make_pair(con.get_fd(), http_request()));
+			      request_map[con.get_fd()] = http_request();
 			  });
-    server.set_on_data_income([&](std::map<int, vm::http_connection>& clients, http_connection& con)
+    server.set_on_data_income([this](std::map<int, vm::http_connection>& clients, http_connection& con)
 			      {
 				  std::cout << "in on_data_income" << std::endl;
 				  std::string msg = con.recieve_data();
@@ -36,7 +37,7 @@ vm::http_server::http_server(std::string host, std::string port)
 				      request_map.erase(fd);
 				  }
 			      });
-    server.set_on_disconnect([&](std::map<int, vm::http_connection>&, http_connection& con)
+    server.set_on_disconnect([this](std::map<int, vm::http_connection>&, http_connection& con)
 			     {
 				 request_map.erase(con.get_socket().get_fd());
 			     });

@@ -4,7 +4,9 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
 
 project (CourseWork)
 
-set(SOURCE_FILES src/tcp.h
+set(SOURCE_FILES src/logger.h
+		 src/logger.cpp
+		 src/tcp.h
 		 src/tcp_socket.cpp
 		 src/epoll_wrapper.cpp
 		 src/tcp_connection.cpp

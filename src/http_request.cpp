@@ -2,6 +2,7 @@
 #include <string>
 #include <utility>
 #include <iostream>
+#include "logger.h"
 #include "http.h"
 
 void vm::http_request::append_data(std::string data)
@@ -52,7 +53,7 @@ void vm::http_request::parse()
 	    }
 	} else if (!body_parsed)
 	{
-	    std::cout << "PARSING BODY " << unparsed << std::endl;
+	    vm::log_d("request: parsing body " + unparsed);
 	    if (headers.find("Content-Length") != headers.end())
 	    {
 		int cnt = std::stoi(headers["Content-Length"]);
@@ -83,6 +84,14 @@ void vm::http_request::add_header(std::string name, std::string value)
 
 std::string vm::http_request::commit()
 {
+    std::string ret = commit_headers();
+    ret += body;
+    ret += "\r\n";
+    return ret;
+}
+
+std::string vm::http_request::commit_headers()
+{
     std::string ret = "";
     ret += request_method.description + " " + url + " " + http_version + "\r\n";
     for (auto header: headers)
@@ -90,10 +99,9 @@ std::string vm::http_request::commit()
 	ret += header.first + ": " + header.second + "\r\n";
     }
     ret += "\r\n";
-    ret += body;
-    ret += "\r\n";
     return ret;
 }
+
 
 std::map<std::string, std::string> vm::http_request::get_headers()
 {

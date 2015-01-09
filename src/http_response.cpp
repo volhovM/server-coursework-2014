@@ -2,7 +2,30 @@
 #include <string>
 #include <utility>
 #include <iostream>
+#include <algorithm>
+#include <functional>
+#include <cctype>
+#include <locale>
 #include "http.h"
+#include "logger.h"
+
+
+// trim from start
+std::string &ltrim(std::string &s) {
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
+    return s;
+}
+
+// trim from end
+std::string &rtrim(std::string &s) {
+    s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
+    return s;
+}
+
+// trim from both ends
+std::string &trim(std::string &s) {
+    return ltrim(rtrim(s));
+}
 
 void vm::http_response::append_data(std::string data)
 {
@@ -51,7 +74,7 @@ void vm::http_response::parse()
 		unparsed = unparsed.substr(next + 2);
 		std::string name = curr.substr(0, curr.find(":"));
 		curr = curr.substr(curr.find(":") + 2); // +space
-		add_header(name, curr);
+		add_header(name, trim(curr));
 	    }
 	} else if (!body_parsed)
 	{
@@ -62,11 +85,27 @@ void vm::http_response::parse()
 		body += unparsed;
 		unparsed = "";
 		if (cnt == body.length()) body_parsed = true;
+	    } else if (headers.find("Transfer-Encoding") != headers.end())
+	    {
+		if (headers["Transfer-Encoding"] == "chunked")
+		{
+		    body = "Chunked is not supported at the moment, sorry";
+		    add_header("Content-Length", std::to_string(body.length()));
+		    headers.erase("Transfer-Encoding");
+		    body_parsed = true;
+		} else log_e("unknown transfer encoding: " + headers["Transfer-Encoding"]);
 	    } else body_parsed = true;
 	    break;
 	}
     }
-    std::cout << "LEFT TO PARSE: " << "$$$" << unparsed << "$$$" << std::endl;
+    if (unparsed.length() > 0)
+    {
+	log_e("left_to_parse: "
+	      + std::to_string(unparsed.length()) + " symbols, parts: "
+	      + std::to_string(title_parsed)
+	      + std::to_string(headers_parsed)
+	      + std::to_string(body_parsed));
+    }
 }
 
 void vm::http_response::set_status_code(http_status_code new_code)
@@ -86,6 +125,15 @@ void vm::http_response::set_body(std::string new_body)
 
 std::string vm::http_response::commit()
 {
+    std::string ret = commit_headers();
+    ret += body;
+    ret += "\r\n";
+    return ret;
+}
+
+
+std::string vm::http_response::commit_headers()
+{
     std::string ret = "";
     ret += "HTTP/" + HTTP_VERSION + " " + std::to_string(status_code.code)
 	+ " " + status_code.description + "\r\n";
@@ -94,7 +142,6 @@ std::string vm::http_response::commit()
 	ret += header.first + ": " + header.second + "\r\n";
     }
     ret += "\r\n";
-    ret += body;
     return ret;
 }
 

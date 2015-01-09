@@ -40,6 +40,7 @@ int main3(int argc, char *argv[]) {
 			 std::cout << rs[1].commit() << std::endl;
 			 run = false;
 		     },
+		     [](int fd){},
 		     epoll);
     while(run)
     {

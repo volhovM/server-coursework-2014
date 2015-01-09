@@ -68,6 +68,7 @@ namespace vm
 	std::string get_body();
 
 	std::string commit();
+	std::string commit_headers();
 
     private:
 	http_status_code status_code;
@@ -109,6 +110,7 @@ namespace vm
 	http_request_method get_request_method();
 
 	std::string commit();
+	std::string commit_headers();
 
     private:
 	http_request_method request_method;
@@ -134,6 +136,7 @@ namespace vm
 
 	void query(std::vector<http_request> requests,
 		   std::function<void(std::vector<vm::http_response>)> response_handler,
+		   std::function<void(int)> disconnection_handler,
 		   vm::epoll_wrapper&);
 
 	void send_request(http_request);

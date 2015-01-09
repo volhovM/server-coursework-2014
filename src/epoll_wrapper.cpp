@@ -17,7 +17,9 @@
 #include <iostream>
 #include <utility>
 #include <cstdio>
+
 #include "tcp.h"
+#include "logger.h"
 
 vm::epoll_wrapper::epoll_wrapper()
 {
@@ -36,14 +38,14 @@ vm::epoll_wrapper::~epoll_wrapper()
 void vm::epoll_wrapper::process_events()
 {
     epoll_event *events = (epoll_event *) calloc(MAXEVENTS, sizeof(epoll_event));
-    std::cout << "before epoll_wait" << std::endl;
+    vm::log_d("before epoll_wait");
     int n = epoll_wait(efd, events, MAXEVENTS, -1);
-    std::cout << "epoll_wait succeeded, errno " << errno << " n " << n << std::endl;
+    vm::log_d("epoll_wait succeeded, errno " + std::to_string(errno) + " n " + std::to_string(n));
     for (int i = 0; i < n; i++) {
 	int evfd = events[i].data.fd;
 	if ((events[i].events & EPOLLRDHUP) || (events[i].events & EPOLLHUP))
 	{
-	    std::cout << "EPOLL: " << "connection closed" << std::endl;
+	    vm::log_d("epoll: connection closed");
 	    if (handlers.find(evfd) != handlers.end())
 	    {
 		epoll_handler curr = handlers[evfd];
@@ -54,19 +56,19 @@ void vm::epoll_wrapper::process_events()
 	else if ((events[i].events & EPOLLERR) ||
 	    (!(events[i].events & EPOLLIN)))
 	{
-	    std::cout << "EPOLL: " << "events error" << std::endl;
+	    vm::log_e("epoll: events error");
 	    continue;
 	}
 	else
 	{
-	    std::cout << "EPOLL: " << "data_income" << std::endl;
+	    vm::log_d("epoll: data_income");
 	    if (handlers.find(evfd) != handlers.end())
 	    {
-		std::cout << "calling data_income_handler " << evfd << std::endl;
+		vm::log_d("epoll: calling data_income_handler " + std::to_string(evfd));
 		epoll_handler curr = handlers[evfd];
 		curr.on_data_income(evfd);
 	    }
-	    std::cout << "EPOLL: " << "connection passed" << std::endl;
+	    vm::log_d("epoll: connection passed");
 	}
     }
     free(events);
@@ -76,7 +78,6 @@ std::function<void(int)> vm::epoll_wrapper::on_socket_connect(std::function<void
 {
     return [socket_handler](int fd)
     {
-	//std::cout << "EPOLL: " << "trying" << std::endl;
 	sockaddr in_addr;
 	socklen_t in_len;
 	char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
@@ -87,38 +88,36 @@ std::function<void(int)> vm::epoll_wrapper::on_socket_connect(std::function<void
 	    if ((errno == EAGAIN) ||
 		(errno == EWOULDBLOCK))
 	    {
-		std::cerr << "ACCEPT FAILED" << std::endl;
+		vm::log_e("accept failed");
 	    }
 	    else
 	    {
 		perror("accept");
-		std::cerr << "ACCEPT" << std::endl;
+		vm::log_e("accept_failed");
 	    }
 	}
 	socket_handler(std::move(temp));
-	//std::cout << "AFTER SOCKET_HANDLER IN EPOLL" << std::endl;
-	//		std::cout << "EPOLL: " << "calling on_socket_connect" << std::endl;
-	//std::cout << "EPOLL EXITING SOCKET ADD FOO" << std::endl;
     };
 }
 
 void vm::epoll_wrapper::add_socket(tcp_socket& socket, epoll_handler handler)
 {
-    std::cout << "EPOLL: adding socket with fd " << socket.get_fd() << std::endl;
+    vm::log_d("epoll: num " + std::to_string(efd));
+    vm::log_d("epoll: adding socket with fd " + std::to_string(socket.get_fd()));
     epoll_event event;
     event.data.fd = socket.get_fd();
     event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
-    //std::cout << "adding " << socket.get_fd() << std::endl;
     if (epoll_ctl(efd, EPOLL_CTL_ADD, socket.get_fd(), &event) == -1) {
 	perror("epoll_ctl");
 	abort();
     }
     handlers.insert(std::make_pair(socket.get_fd(), handler));
-    std::cout << "EPOLL: added " << socket.get_fd() << std::endl;
+    vm::log_d("epoll: added " + std::to_string(socket.get_fd()));
 }
 
 void vm::epoll_wrapper::remove_socket(int fd)
 {
-    std::cout << "EPOLL: removing " << fd << std::endl;
+    vm::log_d("epoll: removing "  + std::to_string(fd));
     handlers.erase(fd);
+    epoll_ctl(efd, EPOLL_CTL_DEL, fd, NULL);
 }

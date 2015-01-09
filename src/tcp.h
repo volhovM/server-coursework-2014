@@ -38,6 +38,7 @@ namespace vm
 	void set_listening();
 	void init(std::string hostname, std::string port);
 	void add_flag(int flag);
+	void revert_flag(int flag);
 
 	void send(const std::string);
 	std::string recieve();
@@ -120,20 +121,20 @@ namespace vm
 		epoll.add_socket(server_socket,
 				 epoll_wrapper::epoll_handler {
 				     epoll_wrapper::on_socket_connect(
-								      [&](tcp_socket&& sock)
+								      [this](tcp_socket&& sock)
 								      {
 									  int fd = sock.get_fd();
-									  clients.insert(std::make_pair(fd, T(std::move(sock))));
+									  clients.emplace(fd, std::move(sock));
 									  clients[fd].id = id_counter++;
 									  clients[fd].get_socket().add_flag(O_NONBLOCK);
 									  epoll.add_socket(clients[fd].get_socket(),
 											   epoll_wrapper::epoll_handler
 											   {
-											       ([&](int fd)
+											       ([this](int fd)
 												{
 												    this->on_data_income(clients, clients[fd]);
 												}),
-												   [&](int fd)
+												   [this](int fd)
 												       {
 													   this->disconnect_client(clients[fd]);
 												       }

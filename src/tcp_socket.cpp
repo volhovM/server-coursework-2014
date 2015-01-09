@@ -17,13 +17,6 @@
 #include "tcp.h"
 using namespace vm;
 
-tcp_socket::tcp_socket(std::string hostname, std::string port)
-    : sfd(-1)
-{
-    std::cout << "creating socket " << hostname << " " << port << std::endl;
-    init(hostname, port);
-}
-
 tcp_socket::tcp_socket(std::string hostname, std::string port, bool srv)
     : sfd(-1)
     , is_server(srv)
@@ -31,6 +24,10 @@ tcp_socket::tcp_socket(std::string hostname, std::string port, bool srv)
     std::cout << "creating socket " << hostname << " " << port << std::endl;
     init(hostname, port);
 }
+
+tcp_socket::tcp_socket(std::string hostname, std::string port)
+    : tcp_socket(hostname, port, false)
+{}
 
 // accepting
 tcp_socket::tcp_socket(int infd, sockaddr in_addr, socklen_t in_len)
@@ -62,7 +59,7 @@ bool tcp_socket::is_valid()
 
 void tcp_socket::close_fd()
 {
-    //    std::cout << "closing fd: " << sfd << std::endl;
+    std::cout << "closing fd: " << sfd << std::endl;
     close(sfd);
     invalidate();
 }
@@ -141,39 +138,74 @@ void tcp_socket::add_flag(int flag) {
     }
 }
 
+void tcp_socket::revert_flag(int flag) {
+    //    std::cout << "addinng flag " << flag << " to socket " << sfd << std::endl;
+    int flags = fcntl(sfd, F_GETFL, 0);
+    if (flags == -1) {
+	throw std::runtime_error("fcntl1, errno " + std::to_string(errno));
+    }
+    flags ^= flag;
+    if (fcntl(sfd, F_SETFL, flags) == -1) {
+	throw std::runtime_error("fcntl2" + std::to_string(errno));
+    }
+}
+
 void tcp_socket::send(const std::string str) {
     //    std::cout << "writing char* '" << input << "' of size " << sizeof(input) << " and length "
     //      << strlen(input) << " into " << sfd << std::endl;
-    std::cout << "writing to socket " << sfd << ":" << str << std::endl;
+    std::cout << "writing to socket " << sfd << ":" << std::to_string(str.length()) << std::endl;
+    revert_flag(O_NONBLOCK);
     write(sfd, str.c_str(), str.length());
+    revert_flag(O_NONBLOCK);
 }
 
-std::string tcp_socket::recieve() {
-    std::cout << "reading from socket " << sfd << std::endl;
+//std::string tcp_socket::recieve() {
+//    std::cout << "reading from socket " << sfd << std::endl;
+//    ssize_t count;
+//    int len = 512;
+//    char buf[len];
+//    std::string ret = "";
+//    while (true) {
+//	std::cout << "before read from " << sfd << std::endl;
+//	count = read(sfd, buf, len);
+//	std::cout << "after read from " << sfd << " got " << count << std::endl;
+//	if (count == -1) {
+//	    // if errno == EAGAIN, we have read all data
+//	    if (errno != EAGAIN) {
+//		std::cerr << "EAGAIN while reading socket fd #" << sfd << std::endl;
+//	    } else
+//	    {
+//		return ret;
+//	    }
+//	} else if (count == 0)
+//	{
+//	    //eof
+//	    return ret;
+//	}
+//	buf[count] = '\0';
+//	ret += std::string(buf);
+//    }
+//}
+std::string tcp_socket::recieve()
+{
+    std::string ret;
     ssize_t count;
     int len = 512;
     char buf[len];
-    std::string ret = "";
-    while (true) {
-	std::cout << "before read from " << sfd << std::endl;
-	count = read(sfd, buf, len);
-	std::cout << "after read from " << sfd << std::endl;
-	if (count == -1) {
-	    // if errno == EAGAIN, we have read all data
-	    if (errno != EAGAIN) {
-		std::cerr << "EAGAIN while reading socket fd #" << sfd << std::endl;
-	    } else
-	    {
-		return ret;
+    while(true)
+    {
+	count = recv(sfd, buf, len, 0);
+	if(count == -1) {
+	    if(errno != EAGAIN && errno != EWOULDBLOCK) {
+		throw std::runtime_error("Error while reading the socket!");
 	    }
-	} else if (count == 0)
-	{
-	    //eof
-	    return ret;
+	    break;
+	} else if (count == 0) {
+	    break;
 	}
-	buf[count] = '\0';
-	ret += std::string(buf);
+	ret.append(buf, (size_t) count);
     }
+    return ret;
 }
 
 std::pair<std::string, std::string> vm::tcp_socket::get_address()

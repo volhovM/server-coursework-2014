@@ -4,6 +4,7 @@
 #include <utility>
 #include <memory>
 #include "http.h"
+#include "logger.h"
 
 vm::http_connection::http_connection()
     : tcp_connection()
@@ -28,6 +29,7 @@ vm::http_connection::http_connection(http_connection&& that)
 
 void vm::http_connection::query(std::vector<vm::http_request> req,
 				std::function<void(std::vector<vm::http_response>)> response_handler,
+				std::function<void(int)> disconnection_handler,
 				epoll_wrapper& epoll)
 {
     std::vector<vm::http_response>* responses = new std::vector<vm::http_response>();
@@ -38,17 +40,15 @@ void vm::http_connection::query(std::vector<vm::http_request> req,
 			 // FIXME capturing & ?
 			 [&epoll, responses, req, response_handler, this](int fd)
 			 {
-			     std::cout << "In http_connection query start handler" << std::endl;
 			     std::string data = recieve_data();
-			     std::cout << "got data: " << data << std::endl;
-			     std::cout << (responses == NULL) << std::endl;
+			     vm::log_d((responses == NULL) ?
+					"responces are null" : "responses are not null");
 			     responses->back().append_data(data);
-			     std::cout << "----MARK----" << std::endl;
 
 			     if (responses->back().is_complete())
 			     {
-				 std::cout << "responce ok " << responses->size()
-					   << " of " << req.size();
+				 vm::log_d("responce ok " + std::to_string(responses->size())
+					   + " of " + std::to_string(req.size()));
 				 if (responses->size() == req.size())
 				 {
 				     epoll.remove_socket(get_fd());
@@ -59,15 +59,16 @@ void vm::http_connection::query(std::vector<vm::http_request> req,
 				     responses->push_back(http_response());
 			     } else
 			     {
-				 std::cout << "request not over" << std::endl;
+				 vm::log_d("request not over");
 			     }
 			 },
-			     [&](int fd)
+			     [disconnection_handler](int fd)
 			     {
-				 std::cout << "Couldn't download from id " << id << std::endl;
+				 vm::log_w("Couldn't download from fd " + std::to_string(fd));
+				 disconnection_handler(fd);
 			     }
 		     });
-    std::cout << "sending requests" << std::endl;
+    vm::log_d("sending_requests");
     for (http_request r: req) this->send_request(r);
 }
 
