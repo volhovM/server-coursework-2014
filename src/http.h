@@ -107,6 +107,7 @@ namespace vm
 
 	std::map<std::string, std::string> get_headers();
 	std::string get_url();
+	std::string get_body();
 	http_request_method get_request_method();
 
 	std::string commit();
@@ -156,6 +157,7 @@ namespace vm
 	void stop();
 	bool is_running();
 
+	void disconnect_client(http_connection&);
 	vm::epoll_wrapper& get_epoll();
 	// client's request is formed, do something (maybe send a response)
 	void set_on_request(std::function<void(http_connection&, http_request)>);

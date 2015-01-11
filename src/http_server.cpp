@@ -21,9 +21,8 @@ vm::http_server::http_server(std::string host, std::string port)
 			  });
     server.set_on_data_income([this](std::map<int, vm::http_connection>& clients, http_connection& con)
 			      {
-				  std::cout << "in on_data_income" << std::endl;
+				  vm::log_d("server: in on_data_income");
 				  std::string msg = con.recieve_data();
-				  std::cout << msg << std::endl;
 				  int fd = con.get_fd();
 				  http_request r = request_map[fd];
 				  r.append_data(msg);
@@ -32,6 +31,13 @@ vm::http_server::http_server(std::string host, std::string port)
 				  if (request_map[con.get_socket().get_fd()]
 				      .is_complete())
 				  {
+				      vm::log_d("--------INCOME--------");
+				      vm::log_d(request_map[con.get_fd()].commit_headers());
+				      vm::log_d("+"
+						+ std::to_string(request_map[con.get_fd()]
+								 .get_body()
+								 .length()) + " body chars");
+				      vm::log_d("-------*INCOME*-------");
 				      on_request(clients.at(con.get_fd()),
 						 request_map[con.get_fd()]);
 				      request_map.erase(fd);
@@ -60,6 +66,11 @@ void vm::http_server::stop()
 bool vm::http_server::is_running()
 {
     return server.is_running();
+}
+
+void vm::http_server::disconnect_client(vm::http_connection& connection)
+{
+    server.disconnect_client(connection);
 }
 
 void vm::http_server::set_on_request(std::function<void(http_connection&, http_request)> foo)

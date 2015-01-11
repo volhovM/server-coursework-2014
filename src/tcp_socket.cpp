@@ -9,20 +9,69 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <cstdio>
+#include <string>
 #include <cstring>
 #include <netdb.h>
 #include <errno.h>
 #include <stdexcept>
 #include <utility>
 #include "tcp.h"
+#include "logger.h"
 using namespace vm;
 
 tcp_socket::tcp_socket(std::string hostname, std::string port, bool srv)
     : sfd(-1)
     , is_server(srv)
 {
-    std::cout << "creating socket " << hostname << " " << port << std::endl;
-    init(hostname, port);
+    vm::log_d("creating socket " + hostname + " " + port);
+    addrinfo hints;
+    addrinfo *result, *rp;
+
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+    if (hostname == "") hostname = "localhost";
+    int s = getaddrinfo(hostname.c_str(), port.c_str(), &hints, &result);
+    if (s != 0) {
+	fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+	throw std::runtime_error("getaddrinfo fail for host " + hostname + " with port " + port);
+    }
+
+    //try all results until manage to bind to some address
+    for (rp = result; rp != NULL; rp = rp->ai_next) {
+	sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+	if (sfd == -1)
+	    continue;
+	if (is_server)
+	{
+	    int yes = 1;
+	    setsockopt(sfd,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(int));
+	    vm::log_d("socket: binding");
+	    if (bind(sfd, rp->ai_addr, rp->ai_addrlen) == 0)
+	    {
+		//ok;
+		break;
+	    }
+	} else
+	{
+	    vm::log_d("socket: connecting");
+	    if (connect(sfd, rp->ai_addr, rp->ai_addrlen) == 0)
+	    {
+		break;
+	    }
+	}
+	vm::log_e("Could not bind/connect, errno: " + std::to_string(errno));
+	close(sfd);
+    }
+    // no address succeeded
+    if (rp == NULL) {
+	throw std::runtime_error("could not bind/connect to " + hostname + ":" + port);
+    }
+    vm::log_d("Binded/connected to " + std::to_string(sfd));
+    // no longer needed
+    freeaddrinfo(result);
+    if (is_server) set_listening();
 }
 
 tcp_socket::tcp_socket(std::string hostname, std::string port)
@@ -59,7 +108,7 @@ bool tcp_socket::is_valid()
 
 void tcp_socket::close_fd()
 {
-    std::cout << "closing fd: " << sfd << std::endl;
+    vm::log_w("closing fd: " + std::to_string(sfd));
     close(sfd);
     invalidate();
 }
@@ -72,58 +121,6 @@ void tcp_socket::set_listening() {
     // TODO add err handling
     if (is_server) listen(sfd, SOMAXCONN);
     else throw std::runtime_error("You don't want to listen to client socket");
-}
-
-void tcp_socket::init(std::string hostname, std::string port) {
-    addrinfo hints;
-    addrinfo *result, *rp;
-
-    memset(&hints, 0, sizeof(struct addrinfo));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE;
-    if (hostname == "") hostname = "localhost";
-    int s = getaddrinfo(hostname.c_str(), port.c_str(), &hints, &result);
-    if (s != 0) {
-	fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-	throw std::runtime_error("getaddrinfo fail for host " + hostname + " with port " + port);
-    }
-
-    //try all results until manage to bind to some address
-    for (rp = result; rp != NULL; rp = rp->ai_next) {
-	sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-	if (sfd == -1)
-	    continue;
-	if (is_server)
-	{
-	    int yes = 1;
-	    setsockopt(sfd,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(int));
-	    std::cout << "binding" << std::endl;
-	    if (bind(sfd, rp->ai_addr, rp->ai_addrlen) == 0)
-	    {
-		//ok;
-		break;
-	    }
-	} else
-	{
-	    std::cout << "connecting" << std::endl;
-	    if (connect(sfd, rp->ai_addr, rp->ai_addrlen) == 0)
-	    {
-		break;
-	    }
-	}
-	std::cout << "Could not bind/connect, errno: " << strerror(errno) << std::endl;
-	close(sfd);
-    }
-    // no address succeeded
-    if (rp == NULL) {
-	throw std::runtime_error("could not bind/connect to " + hostname + ":" + port);
-    }
-    std::cout << "Binded/connected to " << sfd << std::endl;
-    // no longer needed
-    freeaddrinfo(result);
-
-    if (is_server) set_listening();
 }
 
 void tcp_socket::add_flag(int flag) {
@@ -153,7 +150,8 @@ void tcp_socket::revert_flag(int flag) {
 void tcp_socket::send(const std::string str) {
     //    std::cout << "writing char* '" << input << "' of size " << sizeof(input) << " and length "
     //      << strlen(input) << " into " << sfd << std::endl;
-    std::cout << "writing to socket " << sfd << ":" << std::to_string(str.length()) << std::endl;
+    vm::log_d("writing to socket " + std::to_string(sfd) + ":"
+	      + std::to_string(str.length()) + " chars");
     revert_flag(O_NONBLOCK);
     write(sfd, str.c_str(), str.length());
     revert_flag(O_NONBLOCK);
@@ -186,27 +184,46 @@ void tcp_socket::send(const std::string str) {
 //	ret += std::string(buf);
 //    }
 //}
+
+
+//std::string tcp_socket::recieve()
+//{
+//    std::string ret;
+//    ssize_t count;
+//    int len = 512;
+//    char buf[len];
+//    while(true)
+//    {
+//	vm::log_d("socket: before recv");
+//	count = recv(sfd, buf, len, 0);
+//	vm::log_d("socket: after recv, got " + std::to_string(count));
+//	if(count == -1) {
+//	    if(errno != EAGAIN && errno != EWOULDBLOCK) {
+//		throw std::runtime_error("Error while reading the socket, errno "
+//					 + std::to_string(errno));
+//	    }
+//	    break;
+//	} else if (count == 0) {
+//	    break;
+//	}
+//	ret.append(buf, (size_t) count);
+//    }
+//    return ret;
+//}
+
 std::string tcp_socket::recieve()
 {
     std::string ret;
-    ssize_t count;
-    int len = 512;
-    char buf[len];
-    while(true)
-    {
-	count = recv(sfd, buf, len, 0);
-	if(count == -1) {
-	    if(errno != EAGAIN && errno != EWOULDBLOCK) {
-		throw std::runtime_error("Error while reading the socket!");
-	    }
-	    break;
-	} else if (count == 0) {
-	    break;
-	}
-	ret.append(buf, (size_t) count);
-    }
-    return ret;
+    int len = 0;
+    ioctl(sfd, FIONREAD, &len);
+    if (len > 0) {
+	char buf[len];
+	len = read(sfd, buf, len);
+	ret.append(buf, (size_t) len);
+	return ret;
+    } else return "";
 }
+
 
 std::pair<std::string, std::string> vm::tcp_socket::get_address()
 {

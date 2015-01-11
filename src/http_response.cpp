@@ -89,10 +89,35 @@ void vm::http_response::parse()
 	    {
 		if (headers["Transfer-Encoding"] == "chunked")
 		{
-		    body = "Chunked is not supported at the moment, sorry";
-		    add_header("Content-Length", std::to_string(body.length()));
-		    headers.erase("Transfer-Encoding");
-		    body_parsed = true;
+		    log_w("chunked encoding");
+		    //		    body = "Chunked is not supported at the moment, sorry";
+		    //		    add_header("Content-Length", std::to_string(body.length()));
+		    //		    headers.erase("Transfer-Encoding");
+		    //		    body_parsed = true;
+		    unsigned int chunksize = -1;
+		    while (true)
+		    {
+			// chunk hasn't arrived yet
+			if (unparsed.length() == 0) break;
+
+			chunksize = std::stoul(unparsed.substr(0, unparsed.find("\r\n")),
+					       nullptr, 16);
+			vm::log_d("chunk, size: " + std::to_string(chunksize));
+			if (chunksize == 0)
+			{
+			    unparsed = unparsed.substr(unparsed.find("\r\n") + 4);
+			    body_parsed = true;
+			    break;
+			}
+			std::string unparsed_temp = unparsed.substr(unparsed.find("\r\n") + 2);
+			if (unparsed_temp.length() < chunksize + 2) // must be \r\n after data
+			{
+			    // chunk is not here yet
+			    break;
+			}
+			body += unparsed_temp.substr(0, chunksize);
+			unparsed = unparsed_temp.substr(chunksize + 2);
+		    }
 		} else log_e("unknown transfer encoding: " + headers["Transfer-Encoding"]);
 	    } else body_parsed = true;
 	    break;
@@ -100,7 +125,7 @@ void vm::http_response::parse()
     }
     if (unparsed.length() > 0)
     {
-	log_e("left_to_parse: "
+	log_w("left_to_parse: "
 	      + std::to_string(unparsed.length()) + " symbols, parts: "
 	      + std::to_string(title_parsed)
 	      + std::to_string(headers_parsed)

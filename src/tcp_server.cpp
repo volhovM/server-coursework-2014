@@ -15,6 +15,8 @@
 #include "tcp.h"
 
 
+// TRASH TRASH TRASH TRASH TRASH TRASH TRASH TRASH TRASH TRASH TRASH TRASH TRASH TRASH
+
 vm::tcp_server<T>::tcp_server(std::string host, std::string port)
     : on_data_income([](std::map<int, T>&, T&){})
     , on_connect([](std::map<int, T>&, T&){})

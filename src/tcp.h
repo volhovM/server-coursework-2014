@@ -19,6 +19,9 @@
 #include <memory>
 #include <functional>
 #include <map>
+#include <vector>
+
+#include "logger.h"
 
 namespace vm
 {
@@ -36,7 +39,6 @@ namespace vm
 	bool is_valid();
 	void close_fd();
 	void set_listening();
-	void init(std::string hostname, std::string port);
 	void add_flag(int flag);
 	void revert_flag(int flag);
 
@@ -65,6 +67,7 @@ namespace vm
 	    std::function<void(int)> on_disconnect;
 	};
 
+	void dump_status();
 	void process_events();
 	void add_socket(tcp_socket&, epoll_handler);
 	void remove_socket(int);
@@ -73,6 +76,7 @@ namespace vm
 	std::map<int, epoll_handler> handlers;
 	int efd;
 	int MAXEVENTS = 64;
+	std::vector<int> fd_status;
     };
 
     struct tcp_connection
@@ -140,10 +144,9 @@ namespace vm
 												       }
 
 											   });
-									  std::cout << "Added a client on socket with fd "
-										    << fd << std::endl;
+									  vm::log_m("Added a client on socket with fd "
+										    + std::to_string(fd));
 									  this->on_connect(clients, clients[fd]);
-									  std::cout << "After on_connect" << std::endl;
 								      }),
 					 [](int fd){}
 				 });
@@ -187,8 +190,9 @@ namespace vm
 	    {
 		int fd = client.get_fd();
 		on_disconnect(clients, client);
+		epoll.remove_socket(fd);
 		clients.erase(client.get_socket().get_fd());
-		std::cout << "Connection closed on fd " << fd << std::endl;
+		vm::log_m("Connection closed on fd " + std::to_string(fd));
 	    }
 
 	    epoll_wrapper& get_epoll()

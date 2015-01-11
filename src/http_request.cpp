@@ -82,6 +82,12 @@ void vm::http_request::add_header(std::string name, std::string value)
     headers[name] = value;
 }
 
+
+std::string vm::http_request::get_body()
+{
+    return body;
+}
+
 std::string vm::http_request::commit()
 {
     std::string ret = commit_headers();

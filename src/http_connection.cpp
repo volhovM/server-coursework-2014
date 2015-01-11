@@ -51,6 +51,7 @@ void vm::http_connection::query(std::vector<vm::http_request> req,
 					   + " of " + std::to_string(req.size()));
 				 if (responses->size() == req.size())
 				 {
+				     // must add handler
 				     epoll.remove_socket(get_fd());
 				     response_handler(*responses);
 				     delete responses;
@@ -79,5 +80,7 @@ void vm::http_connection::send_request(http_request request)
 
 void vm::http_connection::send_response(http_response response)
 {
+    vm::log_d("http_connection: writing response, body: " +
+	      std::to_string(response.get_body().length()));
     this->send_data(response.commit());
 }
