@@ -23,7 +23,8 @@ tcp_socket::tcp_socket(std::string hostname, std::string port, bool srv)
     : sfd(-1)
     , is_server(srv)
 {
-    vm::log_d("creating socket " + hostname + " " + port);
+    vm::log_d("socket: creating socket " + hostname + " " + port + " of type server: " +
+              std::to_string(is_server));
     addrinfo hints;
     addrinfo *result, *rp;
 
@@ -33,40 +34,41 @@ tcp_socket::tcp_socket(std::string hostname, std::string port, bool srv)
     hints.ai_flags = AI_PASSIVE;
     if (hostname == "") hostname = "localhost";
     int s = getaddrinfo(hostname.c_str(), port.c_str(), &hints, &result);
+    vm::log_d("socket: got addr_info");
     if (s != 0) {
-	fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-	throw std::runtime_error("getaddrinfo fail for host " + hostname + " with port " + port);
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+        throw std::runtime_error("getaddrinfo fail for host " + hostname + " with port " + port);
     }
 
     //try all results until manage to bind to some address
     for (rp = result; rp != NULL; rp = rp->ai_next) {
-	sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-	if (sfd == -1)
-	    continue;
-	if (is_server)
-	{
-	    int yes = 1;
-	    setsockopt(sfd,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(int));
-	    vm::log_d("socket: binding");
-	    if (bind(sfd, rp->ai_addr, rp->ai_addrlen) == 0)
-	    {
-		//ok;
-		break;
-	    }
-	} else
-	{
-	    vm::log_d("socket: connecting");
-	    if (connect(sfd, rp->ai_addr, rp->ai_addrlen) == 0)
-	    {
-		break;
-	    }
-	}
-	vm::log_e("Could not bind/connect, errno: " + std::to_string(errno));
-	close(sfd);
+        sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+        if (sfd == -1)
+            continue;
+        if (is_server)
+        {
+            int yes = 1;
+            setsockopt(sfd,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(int));
+            vm::log_d("socket: binding");
+            if (bind(sfd, rp->ai_addr, rp->ai_addrlen) == 0)
+            {
+                //ok;
+                break;
+            }
+        } else
+        {
+            vm::log_d("socket: connecting");
+            if (connect(sfd, rp->ai_addr, rp->ai_addrlen) == 0)
+            {
+                break;
+            }
+        }
+        vm::log_e("socket: could not bind/connect, errno: " + std::to_string(errno));
+        close(sfd);
     }
     // no address succeeded
     if (rp == NULL) {
-	throw std::runtime_error("could not bind/connect to " + hostname + ":" + port);
+        throw std::runtime_error("could not bind/connect to " + hostname + ":" + port);
     }
     vm::log_d("Binded/connected to " + std::to_string(sfd));
     // no longer needed
@@ -79,10 +81,10 @@ tcp_socket::tcp_socket(std::string hostname, std::string port)
 {}
 
 // accepting
-tcp_socket::tcp_socket(int infd, sockaddr in_addr, socklen_t in_len)
+tcp_socket::tcp_socket(int master_fd, sockaddr in_addr, socklen_t in_len)
     : is_server(false)
 {
-    sfd = accept(infd, &in_addr, &in_len);
+    sfd = accept(master_fd, &in_addr, &in_len);
 }
 
 
@@ -108,7 +110,7 @@ bool tcp_socket::is_valid()
 
 void tcp_socket::close_fd()
 {
-    vm::log_w("closing fd: " + std::to_string(sfd));
+    vm::log_w("socket: closing fd: " + std::to_string(sfd));
     close(sfd);
     invalidate();
 }
@@ -127,11 +129,11 @@ void tcp_socket::add_flag(int flag) {
     //    std::cout << "addinng flag " << flag << " to socket " << sfd << std::endl;
     int flags = fcntl(sfd, F_GETFL, 0);
     if (flags == -1) {
-	throw std::runtime_error("fcntl1, errno " + std::to_string(errno));
+        throw std::runtime_error("fcntl1, errno " + std::to_string(errno));
     }
     flags |= flag;
     if (fcntl(sfd, F_SETFL, flags) == -1) {
-	throw std::runtime_error("fcntl2" + std::to_string(errno));
+        throw std::runtime_error("fcntl2" + std::to_string(errno));
     }
 }
 
@@ -139,22 +141,36 @@ void tcp_socket::revert_flag(int flag) {
     //    std::cout << "addinng flag " << flag << " to socket " << sfd << std::endl;
     int flags = fcntl(sfd, F_GETFL, 0);
     if (flags == -1) {
-	throw std::runtime_error("fcntl1, errno " + std::to_string(errno));
+        throw std::runtime_error("fcntl1, errno " + std::to_string(errno));
     }
     flags ^= flag;
     if (fcntl(sfd, F_SETFL, flags) == -1) {
-	throw std::runtime_error("fcntl2" + std::to_string(errno));
+        throw std::runtime_error("fcntl2" + std::to_string(errno));
     }
 }
 
 void tcp_socket::send(const std::string str) {
     //    std::cout << "writing char* '" << input << "' of size " << sizeof(input) << " and length "
     //      << strlen(input) << " into " << sfd << std::endl;
-    vm::log_d("writing to socket " + std::to_string(sfd) + ":"
-	      + std::to_string(str.length()) + " chars");
-    revert_flag(O_NONBLOCK);
-    write(sfd, str.c_str(), str.length());
-    revert_flag(O_NONBLOCK);
+    vm::log_d("socket #" + std::to_string(sfd) + " writing "
+              + std::to_string(str.length()) + " chars");
+    if (sfd == 0) vm::log_e("socket #0, wouldn't write to it");
+    else
+    {
+        revert_flag(O_NONBLOCK);
+        int written = write(sfd, str.c_str(), str.length());
+        if (written == -1)
+        {
+            vm::log_e("socket: error when writing, errno #" +
+                      std::to_string(errno));
+        } else
+        {
+            vm::log_d("socket: writed bytes/of: " +
+                      std::to_string(written) + "/" +
+                      std::to_string(str.length()));
+        }
+        revert_flag(O_NONBLOCK);
+    }
 }
 
 //std::string tcp_socket::recieve() {
@@ -168,17 +184,17 @@ void tcp_socket::send(const std::string str) {
 //	count = read(sfd, buf, len);
 //	std::cout << "after read from " << sfd << " got " << count << std::endl;
 //	if (count == -1) {
-//	    // if errno == EAGAIN, we have read all data
-//	    if (errno != EAGAIN) {
+//          // if errno == EAGAIN, we have read all data
+//          if (errno != EAGAIN) {
 //		std::cerr << "EAGAIN while reading socket fd #" << sfd << std::endl;
-//	    } else
-//	    {
+//          } else
+//          {
 //		return ret;
-//	    }
+//          }
 //	} else if (count == 0)
 //	{
-//	    //eof
-//	    return ret;
+//          //eof
+//          return ret;
 //	}
 //	buf[count] = '\0';
 //	ret += std::string(buf);
@@ -198,13 +214,13 @@ void tcp_socket::send(const std::string str) {
 //	count = recv(sfd, buf, len, 0);
 //	vm::log_d("socket: after recv, got " + std::to_string(count));
 //	if(count == -1) {
-//	    if(errno != EAGAIN && errno != EWOULDBLOCK) {
+//          if(errno != EAGAIN && errno != EWOULDBLOCK) {
 //		throw std::runtime_error("Error while reading the socket, errno "
-//					 + std::to_string(errno));
-//	    }
-//	    break;
+//                                       + std::to_string(errno));
+//          }
+//          break;
 //	} else if (count == 0) {
-//	    break;
+//          break;
 //	}
 //	ret.append(buf, (size_t) count);
 //    }
@@ -217,10 +233,10 @@ std::string tcp_socket::recieve()
     int len = 0;
     ioctl(sfd, FIONREAD, &len);
     if (len > 0) {
-	char buf[len];
-	len = read(sfd, buf, len);
-	ret.append(buf, (size_t) len);
-	return ret;
+        char buf[len];
+        len = read(sfd, buf, len);
+        ret.append(buf, (size_t) len);
+        return ret;
     } else return "";
 }
 
@@ -237,13 +253,13 @@ std::pair<std::string, std::string> vm::tcp_socket::get_address()
 
     // deal with both IPv4 and IPv6:
     if (addr.ss_family == AF_INET) {
-	struct sockaddr_in *s = (struct sockaddr_in *)&addr;
-	port = ntohs(s->sin_port);
-	inet_ntop(AF_INET, &s->sin_addr, ipstr, sizeof ipstr);
+        struct sockaddr_in *s = (struct sockaddr_in *)&addr;
+        port = ntohs(s->sin_port);
+        inet_ntop(AF_INET, &s->sin_addr, ipstr, sizeof ipstr);
     } else { // AF_INET6
-	struct sockaddr_in6 *s = (struct sockaddr_in6 *)&addr;
-	port = ntohs(s->sin6_port);
-	inet_ntop(AF_INET6, &s->sin6_addr, ipstr, sizeof ipstr);
+        struct sockaddr_in6 *s = (struct sockaddr_in6 *)&addr;
+        port = ntohs(s->sin6_port);
+        inet_ntop(AF_INET6, &s->sin6_addr, ipstr, sizeof ipstr);
     }
 
     return std::make_pair(std::string(ipstr), std::to_string(port));

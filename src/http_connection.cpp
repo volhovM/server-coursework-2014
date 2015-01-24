@@ -26,51 +26,57 @@ vm::http_connection::http_connection(http_connection&& that)
     : tcp_connection(std::move(that.socket))
 {}
 
-
-void vm::http_connection::query(std::vector<vm::http_request> req,
-				std::function<void(std::vector<vm::http_response>)> response_handler,
-				std::function<void(int)> disconnection_handler,
-				epoll_wrapper& epoll)
+void vm::http_connection::query(vm::http_request req,
+                                std::function<void(vm::http_response)> response_handler,
+                                std::function<void(int)> disconnection_handler,
+                                epoll_wrapper& epoll)
 {
-    std::vector<vm::http_response>* responses = new std::vector<vm::http_response>();
-    responses->push_back(http_response());
-    epoll.add_socket(get_socket(),
-		     vm::epoll_wrapper::epoll_handler
-		     {
-			 // FIXME capturing & ?
-			 [&epoll, responses, req, response_handler, this](int fd)
-			 {
-			     std::string data = recieve_data();
-			     vm::log_d((responses == NULL) ?
-					"responces are null" : "responses are not null");
-			     responses->back().append_data(data);
+    if (!is_alive)
+    {
+        std::unique_ptr<vm::http_response>* response = new std::unique_ptr<vm::http_response>();
+        response->reset(new vm::http_response);
+        //        std::vector<vm::http_response>* responses = new std::vector<vm::http_response>();
+        epoll.add_socket(get_socket(),
+                         vm::epoll_wrapper::epoll_handler
+                         {
+                             // FIXME capturing & ?
+                             [&epoll, response, req, response_handler, this](int fd)
+                             {
+                                 std::string data = recieve_data();
+                                 //vm::log_d((responses == NULL) ?
+                                 //"response is null" : "responses are not null");
+                                 (*response)->append_data(data);
 
-			     if (responses->back().is_complete())
-			     {
-				 vm::log_d("responce ok " + std::to_string(responses->size())
-					   + " of " + std::to_string(req.size()));
-				 if (responses->size() == req.size())
-				 {
-				     // must add handler
-				     epoll.remove_socket(get_fd());
-				     response_handler(*responses);
-				     delete responses;
-				 }
-				 else
-				     responses->push_back(http_response());
-			     } else
-			     {
-				 vm::log_d("request not over");
-			     }
-			 },
-			     [disconnection_handler](int fd)
-			     {
-				 vm::log_w("Couldn't download from fd " + std::to_string(fd));
-				 disconnection_handler(fd);
-			     }
-		     });
-    vm::log_d("sending_requests");
-    for (http_request r: req) this->send_request(r);
+                                 if ((*response)->is_complete())
+                                 {
+                                     vm::log_ex("callback <---" + std::to_string(this->get_fd()));
+                                     vm::log_d("response complete");
+                                     //epoll.remove_socket(get_fd());
+                                     response_handler(**response);
+                                     // FIXME may leak here, not deleting old one
+                                     response->reset(new vm::http_response());
+                                 } else
+                                 {
+                                     vm::log_d("http_connection: request not over");
+                                 }
+                             },
+                             [disconnection_handler, response, this](int fd)
+                             {
+                                 vm::log_w("http_connection: couldn't download from fd "
+                                           + std::to_string(fd));
+                                 disconnection_handler(fd);
+                                 delete response;
+                                 is_alive = false;
+                             }
+                         },
+                         "server->" + get_socket().get_address().first);
+        is_alive = true;
+    } else
+    {
+        vm::log_d("http_connection #" + std::to_string(get_fd()) + " still alive");
+    }
+    vm::log_d("sending_request");
+    this->send_request(req);
 }
 
 void vm::http_connection::send_request(http_request request)
@@ -81,6 +87,6 @@ void vm::http_connection::send_request(http_request request)
 void vm::http_connection::send_response(http_response response)
 {
     vm::log_d("http_connection: writing response, body: " +
-	      std::to_string(response.get_body().length()));
+              std::to_string(response.get_body().length()));
     this->send_data(response.commit());
 }

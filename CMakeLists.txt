@@ -5,19 +5,18 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
 project (CourseWork)
 
 set(SOURCE_FILES src/logger.h
-		 src/logger.cpp
-		 src/tcp.h
-		 src/tcp_socket.cpp
-		 src/epoll_wrapper.cpp
-		 src/tcp_connection.cpp
-		 src/server.cpp
-		 src/http.h
-		 src/http_request.cpp
-		 src/http_response.cpp
-		 src/http_connection.cpp
-		 src/http_server.cpp
-		 src/proxy.cpp
-		 src/http_example.cpp
+                 src/logger.cpp
+                 src/tcp.h
+                 src/tcp_socket.cpp
+                 src/epoll_wrapper.cpp
+                 src/tcp_connection.cpp
+                 src/server.cpp
+                 src/http.h
+                 src/http_request.cpp
+                 src/http_response.cpp
+                 src/http_connection.cpp
+                 src/http_server.cpp
+                 src/proxy.cpp
 )
 
 add_executable(CourseWork ${SOURCE_FILES})

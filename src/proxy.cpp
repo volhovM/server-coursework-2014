@@ -19,41 +19,67 @@ using namespace std;
 int main(int argc, char *argv[]) {
     http_server server;
     http_request requestin;
-    server.set_on_request([&server, &requestin](http_connection& connection, http_request request)
-			  {
-			      vm::log_d("proxy: in data_income handler");
-			      requestin = request;
-			      vector<http_request> requests;
-			      //request.add_header("Connection", "close");
-			      requests.push_back(request);
-			      http_connection* to = new http_connection(request.get_headers()["Host"]);
-			      to->query(requests,
-					[to, requests, &server, &connection](std::vector<vm::http_response> res)
-					{
-					    for (http_response r: res)
-					    {
-						log_m("proxy: got response");
-						log_d("--------OUTCOME--------");
-						log_d(r.commit_headers());
-						log_d("+" + std::to_string(r.get_body().length())
-						      + " body chars");
-						log_d("-------*OUTCOME*-------");
-						log_m("proxy: now sending response...");
-						connection.send_response(r);
-					    }
-					    if (to != nullptr) delete to;
-					    //server.stop();
-					},
-					[to, &server, &connection](int fd)
-					{
-					    server.disconnect_client(connection);
-					    vm::log_d("proxy: closing bridge socket");
-					    server.get_epoll().remove_socket(to->get_fd());
-					    delete to;
-					},
-					server.get_epoll()
-				       );
-			  });
+    map<int, http_connection> con_map; //host, <parent_fd, new connection>
+    map<http_request, http_response> proxy_cache;
+    server.set_on_request([&server, &requestin, &con_map, &proxy_cache](http_connection& connection,
+                                                                        http_request request)
+                          {
+                              vm::log_d("proxy: in data_income handler, got request from " +
+                                        std::to_string(connection.get_fd()));
+                              requestin = request;
+                              // FIXME leaks here
+                              string host = request.get_headers()["Host"];
+                              vm::log_d(host);
+                              if (con_map.find(connection.get_fd()) == con_map.end())
+                              {
+                                  con_map.emplace(connection.get_fd(), host);
+                              }
+                              vm::log_ex("proxy: " + std::to_string(connection.get_fd()) + "--> "
+                                        + std::to_string(con_map[connection.get_fd()]
+                                                         .get_fd()) + "--->");
+                              con_map[connection.get_fd()]
+                                  .query(request,
+                                         [request, &server, &connection, &con_map, host]
+                                         (vm::http_response res)
+                                         {
+                                             log_m("proxy: got response");
+                                             log_d("-----------------OUTCOME-----------------");
+                                             log_d(res.commit_headers());
+                                             log_d("+" + std::to_string(res.get_body().length())
+                                                   + " body chars");
+                                             log_d("----------------*OUTCOME*----------------");
+                                             log_m("proxy: now sending response to " +
+                                                   std::to_string(connection.get_fd()));
+                                             log_e("callback: <--" +
+                                                   std::to_string(connection.get_fd()));
+                                             connection.send_response(res);
+                                         },
+                                         [&server, &connection, &con_map](int fd)
+                                         {
+                                             server.disconnect_client(connection);
+                                             vm::log_d("proxy: closing bridge socket");
+                                             server
+                                                 .get_epoll()
+                                                 .remove_socket(
+                                                                con_map[connection.get_fd()]
+                                                                .get_fd());
+                                             con_map.erase(connection.get_fd());
+                                         },
+                                         server.get_epoll());
+                          });
+    server.set_on_disconnect([&server, &con_map](http_connection& closing)
+                             {
+                                 if (con_map.find(closing.get_fd()) != con_map.end())
+                                 {
+                                     int child_fd = con_map[closing.get_fd()].get_fd();
+                                     vm::log_d("proxy: parent " +
+                                               std::to_string(closing.get_fd()) +
+                                               " closing, so closing child " +
+                                               std::to_string(child_fd));
+                                     server.get_epoll().remove_socket(child_fd);
+                                     con_map.erase(closing.get_fd());
+                                 }
+                             });
     server.start();
     std::cout << "proxy: exiting" << std::endl;
     //    vector<http_request> requests;
@@ -62,13 +88,13 @@ int main(int argc, char *argv[]) {
     //    requests.push_back(requestin);
     //    http_connection to(requestin.get_headers()["Host"]);
     //    to.query(requests,
-    //	     [requests, &server](std::vector<vm::http_response> res)
-    //	     {
-    //		 for (http_response r: res)
-    //		     std::cout << res.back().commit() << std::endl;
-    //		 server.stop();
-    //	     },
-    //	     server.get_epoll()
-    //	     );
+    //       [requests, &server](std::vector<vm::http_response> res)
+    //       {
+    //           for (http_response r: res)
+    //               std::cout << res.back().commit() << std::endl;
+    //           server.stop();
+    //       },
+    //       server.get_epoll()
+    //       );
     //    server.start();
 }
