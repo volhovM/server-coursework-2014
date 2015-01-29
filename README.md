@@ -4,7 +4,7 @@ Usage:
 ```
 cmake .
 make
-./bin/CourseWork 7273
+./bin/CourseWork
 ```
 Then set proxy in your browser to localhost/7273. That's it.
 Tested it on nightly_35.0. Proxy supports chunked, HTTP/1.1, keep-alive, stuff. Perfectly works for me on 
