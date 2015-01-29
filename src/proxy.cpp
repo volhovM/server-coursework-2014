@@ -30,8 +30,19 @@ int main(int argc, char *argv[]) {
                               // FIXME leaks here
                               string host = request.get_headers()["Host"];
                               vm::log_d(host);
+                              if (con_map.find(connection.get_fd()) != con_map.end()
+                                  && http_connection(host).get_socket().get_address().first !=
+                                  con_map[connection.get_fd()].get_socket().get_address().first)
+                              {
+                                  log_d("proxy: emplacing connection");
+                                  server.get_epoll()
+                                      .remove_socket(con_map[connection.get_fd()].get_fd());
+                                  con_map.erase(connection.get_fd());
+                                  con_map.emplace(connection.get_fd(), host);
+                              }
                               if (con_map.find(connection.get_fd()) == con_map.end())
                               {
+                                  log_d("proxy: adding new bridge connection");
                                   con_map.emplace(connection.get_fd(), host);
                               }
                               vm::log_ex("proxy: " + std::to_string(connection.get_fd()) + "--> "
