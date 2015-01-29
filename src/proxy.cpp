@@ -19,7 +19,7 @@ using namespace std;
 int main(int argc, char *argv[]) {
     http_server server;
     http_request requestin;
-    map<int, http_connection> con_map; //host, <parent_fd, new connection>
+    map<int, pair<string, http_connection> > con_map; //host, <parent_fd, new connection>
     map<http_request, http_response> proxy_cache;
     server.set_on_request([&server, &requestin, &con_map, &proxy_cache](http_connection& connection,
                                                                         http_request request)
@@ -30,25 +30,30 @@ int main(int argc, char *argv[]) {
                               // FIXME leaks here
                               string host = request.get_headers()["Host"];
                               vm::log_d(host);
-                              if (con_map.find(connection.get_fd()) != con_map.end()
-                                  && http_connection(host).get_socket().get_address().first !=
-                                  con_map[connection.get_fd()].get_socket().get_address().first)
+                              for (auto i = con_map.begin(); i != con_map.end(); i++)
                               {
-                                  log_d("proxy: emplacing connection");
-                                  server.get_epoll()
-                                      .remove_socket(con_map[connection.get_fd()].get_fd());
-                                  con_map.erase(connection.get_fd());
-                                  con_map.emplace(connection.get_fd(), host);
+                                  if (i->first == connection.get_fd())
+                                  {
+                                      if (i->second.first != host)
+                                      {
+                                          log_d("proxy: emplacing connection");
+                                          server.get_epoll()
+                                              .remove_socket(con_map[connection.get_fd()].second.get_fd());
+                                          con_map.erase(connection.get_fd());
+                                          con_map.emplace(connection.get_fd(), make_pair(host, host));
+                                          break;
+                                      } else break;
+                                  }
                               }
                               if (con_map.find(connection.get_fd()) == con_map.end())
                               {
                                   log_d("proxy: adding new bridge connection");
-                                  con_map.emplace(connection.get_fd(), host);
+                                  con_map.emplace(connection.get_fd(), make_pair(host, host));
                               }
                               vm::log_ex("proxy: " + std::to_string(connection.get_fd()) + "--> "
                                         + std::to_string(con_map[connection.get_fd()]
-                                                         .get_fd()) + "--->");
-                              con_map[connection.get_fd()]
+                                                         .second.get_fd()) + "--->");
+                              con_map[connection.get_fd()].second
                                   .query(request,
                                          [request, &server, &connection, &con_map, host]
                                          (vm::http_response res)
@@ -73,7 +78,7 @@ int main(int argc, char *argv[]) {
                                                  .get_epoll()
                                                  .remove_socket(
                                                                 con_map[connection.get_fd()]
-                                                                .get_fd());
+                                                                .second.get_fd());
                                              con_map.erase(connection.get_fd());
                                          },
                                          server.get_epoll());
@@ -82,7 +87,7 @@ int main(int argc, char *argv[]) {
                              {
                                  if (con_map.find(closing.get_fd()) != con_map.end())
                                  {
-                                     int child_fd = con_map[closing.get_fd()].get_fd();
+                                     int child_fd = con_map[closing.get_fd()].second.get_fd();
                                      vm::log_d("proxy: parent " +
                                                std::to_string(closing.get_fd()) +
                                                " closing, so closing child " +
