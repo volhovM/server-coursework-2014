@@ -219,11 +219,12 @@ namespace vm
                 while (running) {
                     epoll.process_events();
                 }
+                clients.clear();
             }
 
             void stop() {
                 running = false;
-                clients.clear();
+                epoll.remove_socket(server_socket.get_fd());
             }
 
             bool is_running() {

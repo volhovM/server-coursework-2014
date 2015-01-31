@@ -30,7 +30,6 @@ vm::http_server::http_server(std::string host, std::string port)
                                   int fd = con.get_fd();
                                   http_request r = request_map[fd];
                                   r.append_data(msg);
-                                  std::cout << r.is_complete() << std::endl;
                                   request_map[fd] = r;
                                   if (request_map[con.get_socket().get_fd()]
                                       .is_complete())

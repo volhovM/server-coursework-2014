@@ -8,10 +8,10 @@ void mlog(std::string pr, std::string msg)
 }
 
 void vm::log_m(std::string msg) {
-    mlog("MM", msg);
+    //    mlog("MM", msg);
 }
 void vm::log_d(std::string msg) {
-    mlog("DB", msg);
+    //    mlog("DB", msg);
 }
 void vm::log_w(std::string msg) {
     mlog("WW", msg);

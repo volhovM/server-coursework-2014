@@ -19,50 +19,51 @@ bool vm::http_request::is_complete()
 void vm::http_request::parse()
 {
     //	std::cout << "parsing: " << "$$$" << unparsed << "$$$ "
-    //	      << title_parsed << " " << headers_parsed << std::endl;
+    //        << title_parsed << " " << headers_parsed << std::endl;
     while (true)
     {
-	if (!title_parsed)
-	{
-	    request_method = http_request_method { unparsed.substr(0, unparsed.find(" ")) };
-	    unparsed = unparsed.substr(unparsed.find(" ") + 1);
-	    url = unparsed.substr(0, unparsed.find(" "));
-	    //	    std::cout << "PARSER URL: " <<  url << std::endl;
-	    unparsed = unparsed.substr(unparsed.find(" ") + 1);
-	    http_version = unparsed.substr(0, unparsed.find("\r\n"));
-	    unparsed = unparsed.substr(unparsed.find("\r\n") + 2);
-	    title_parsed = true;
-	} else if (!headers_parsed)
-	{
-	    int next = unparsed.find("\r\n");
-	    //	    std::cout << "PARSER: GOT " << next << std::endl;
-	    if (next == 0)
-	    {
-		headers_parsed = true;
-		unparsed = unparsed.substr(2);
-	    } else if (next == -1) {
-		// partial data
-		break;
-	    } else
-	    {
-		std::string curr = unparsed.substr(0, next);
-		unparsed = unparsed.substr(next + 2);
-		std::string name = curr.substr(0, curr.find(":"));
-		curr = curr.substr(curr.find(":") + 2); // +space
-		add_header(name, curr);
-	    }
-	} else if (!body_parsed)
-	{
-	    vm::log_d("request: parsing body " + unparsed);
-	    if (headers.find("Content-Length") != headers.end())
-	    {
-		int cnt = std::stoi(headers["Content-Length"]);
-		body += unparsed;
-		unparsed = "";
-		if (cnt == body.length()) body_parsed = true;
-	    } else body_parsed = true;
-	    break;
-	}
+        if (!title_parsed)
+        {
+            request_method = http_request_method { unparsed.substr(0, unparsed.find(" ")) };
+            unparsed = unparsed.substr(unparsed.find(" ") + 1);
+            url = unparsed.substr(0, unparsed.find(" "));
+            //      std::cout << "PARSER URL: " <<  url << std::endl;
+            unparsed = unparsed.substr(unparsed.find(" ") + 1);
+            http_version = unparsed.substr(0, unparsed.find("\r\n"));
+            unparsed = unparsed.substr(unparsed.find("\r\n") + 2);
+            title_parsed = true;
+        } else if (!headers_parsed)
+        {
+            int next = unparsed.find("\r\n");
+            //      std::cout << "PARSER: GOT " << next << std::endl;
+            if (next == 0)
+            {
+                headers_parsed = true;
+                unparsed = unparsed.substr(2);
+            } else if (next == -1) {
+                // partial data
+                break;
+            } else
+            {
+                std::string curr = unparsed.substr(0, next);
+                unparsed = unparsed.substr(next + 2);
+                std::string name = curr.substr(0, curr.find(":"));
+                curr = curr.substr(curr.find(":") + 2); // +space
+                add_header(name, curr);
+            }
+        } else if (!body_parsed)
+        {
+            vm::log_d("request: parsing body " + unparsed);
+            if (headers.find("Content-Length") != headers.end())
+            {
+                vm::log_d("request stoi: " + headers["Content-Length"]);
+                int cnt = std::stoi(headers["Content-Length"]);
+                body += unparsed;
+                unparsed = "";
+                if (cnt == body.length()) body_parsed = true;
+            } else body_parsed = true;
+            break;
+        }
     }
     // std::cout << "LEFT TO PARSE: " << unparsed << std::endl;
 }
@@ -102,7 +103,7 @@ std::string vm::http_request::commit_headers()
     ret += request_method.description + " " + url + " " + http_version + "\r\n";
     for (auto header: headers)
     {
-	ret += header.first + ": " + header.second + "\r\n";
+        ret += header.first + ": " + header.second + "\r\n";
     }
     ret += "\r\n";
     return ret;

@@ -21,4 +21,4 @@ set(SOURCE_FILES src/logger.h
 
 add_executable(CourseWork ${SOURCE_FILES})
 
-list( APPEND CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS} -g -ftest-coverage -fprofile-arcs -O2")
+list( APPEND CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS} -g")

@@ -43,30 +43,38 @@ void vm::http_connection::query(vm::http_request req,
                              [&epoll, response, req, response_handler, this](int fd)
                              {
                                  std::string data = recieve_data();
-                                 //vm::log_d((responses == NULL) ?
-                                 //"response is null" : "responses are not null");
-                                 (*response)->append_data(data);
+                                 vm::log_d("http_connection: got data from bridge connection: " + data);
 
-                                 if ((*response)->is_complete())
+                                 // may fail because of invalid data
+                                 try {
+                                     (*response)->append_data(data);
+
+                                     if ((*response)->is_complete())
+                                     {
+                                         vm::log_ex("callback <---" + std::to_string(this->get_fd()));
+                                         vm::log_d("response complete");
+                                         //epoll.remove_socket(get_fd());
+                                         response_handler(**response);
+                                         // FIXME may leak here, not deleting old one
+                                         response->reset(new vm::http_response());
+                                     } else
+                                     {
+                                         vm::log_d("http_connection: request not over");
+                                     }
+                                 } catch (std::exception parse_exception)
                                  {
-                                     vm::log_ex("callback <---" + std::to_string(this->get_fd()));
-                                     vm::log_d("response complete");
-                                     //epoll.remove_socket(get_fd());
-                                     response_handler(**response);
-                                     // FIXME may leak here, not deleting old one
+                                     vm::log_e("http_connection: parsing exception!!!: " +
+                                               std::string(parse_exception.what()));
                                      response->reset(new vm::http_response());
-                                 } else
-                                 {
-                                     vm::log_d("http_connection: request not over");
                                  }
                              },
                              [disconnection_handler, response, this](int fd)
                              {
+                                 is_alive = false;
                                  vm::log_w("http_connection: couldn't download from fd "
                                            + std::to_string(fd));
                                  disconnection_handler(fd);
                                  delete response;
-                                 is_alive = false;
                              }
                          },
                          "server->" + get_socket().get_address().first);

@@ -110,7 +110,7 @@ bool tcp_socket::is_valid()
 
 void tcp_socket::close_fd()
 {
-    vm::log_w("socket: closing fd: " + std::to_string(sfd));
+    vm::log_d("socket: closing fd: " + std::to_string(sfd));
     close(sfd);
     invalidate();
 }

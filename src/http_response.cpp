@@ -52,6 +52,7 @@ void vm::http_response::parse()
             http_version = unparsed.substr(0, unparsed.find(" "));
             unparsed = unparsed.substr(unparsed.find(" ") + 1);
 
+            vm::log_d("response_code stoi: " + unparsed.substr(0, unparsed.find(" ")));
             int code = std::stoi(unparsed.substr(0, unparsed.find(" ")));
             unparsed = unparsed.substr(unparsed.find(" ") + 1);
             std::string reason = unparsed.substr(0, unparsed.find("\r\n"));
@@ -84,6 +85,7 @@ void vm::http_response::parse()
             //std::cout << "PARSING BODY " << unparsed << std::endl;
             if (headers.find("Content-Length") != headers.end())
             {
+                vm::log_d("request stoi: " + headers["Content-Length"]);
                 int cnt = std::stoi(headers["Content-Length"]);
                 body += unparsed;
                 unparsed = "";
@@ -128,7 +130,7 @@ void vm::http_response::parse()
     }
     if (unparsed.length() > 0)
     {
-        log_w("left_to_parse: "
+        log_d("left_to_parse: "
               + std::to_string(unparsed.length()) + " symbols, parts: "
               + std::to_string(title_parsed)
               + std::to_string(headers_parsed)
