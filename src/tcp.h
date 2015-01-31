@@ -223,6 +223,7 @@ namespace vm
 
             void stop() {
                 running = false;
+                clients.clear();
             }
 
             bool is_running() {
